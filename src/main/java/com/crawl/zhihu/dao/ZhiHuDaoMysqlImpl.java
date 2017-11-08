@@ -9,14 +9,14 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
 import java.util.Properties;
-
-import com.crawl.zhihu.entity.Answer;
-import com.google.common.collect.Lists;
-import org.slf4j.Logger;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.crawl.core.db.ConnectionManager;
 import com.crawl.core.util.Constants;
+import com.crawl.zhihu.entity.Answer;
 import com.crawl.zhihu.entity.User;
+import com.google.common.collect.Lists;
+import org.slf4j.Logger;
 
 /**
  * 数据访问层， MySQL实现
@@ -27,6 +27,9 @@ import com.crawl.zhihu.entity.User;
  */
 public class ZhiHuDaoMysqlImpl implements ZhiHuDao {
     private static Logger logger =  Constants.ZHIHU_LOGGER;
+
+    private static final int spinCount = 30;
+    private static AtomicInteger currentCount = new AtomicInteger(0);
 
     /**
      * 数据库表初始化
@@ -180,20 +183,29 @@ public class ZhiHuDaoMysqlImpl implements ZhiHuDao {
 
     @Override
     public List<String> listUserTokenLimitNumOrderById(Connection cn, int offset, int limit) {
-        String sql = "select user_token from user order by id asc limit " + offset + "," + limit;
-        List<String> res = Lists.newArrayList();
-        try {
-            PreparedStatement pstmt;
-            pstmt = cn.prepareStatement(sql);
-            ResultSet rs = pstmt.executeQuery();
-            while (rs.next()){
-                res.add(rs.getString("user_token"));
+        // 自旋10次获取数据，只要获取到就成功并返回，否则继续自旋获取
+        // 防止offset不存在的情况
+        for (;;){
+            currentCount.incrementAndGet();
+            String sql = "select user_token from user order by id asc limit " + offset + "," + limit;
+            List<String> res = Lists.newArrayList();
+            try {
+                PreparedStatement pstmt;
+                pstmt = cn.prepareStatement(sql);
+                ResultSet rs = pstmt.executeQuery();
+                while (rs.next()){
+                    res.add(rs.getString("user_token"));
+                }
+                return res;
+            } catch (SQLException e) {
+                e.printStackTrace();
+                logger.error("com.crawl.zhihu.dao.ZhiHuDaoMysqlImpl.listUserTokenLimitNumOrderById error! offset={}, limit={}", offset, limit);
+                offset ++;
             }
-            return res;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            logger.error("com.crawl.zhihu.dao.ZhiHuDaoMysqlImpl.listUserTokenLimitNumOrderById error! offset={}, limit={}", offset, limit);
-            return res;
+            // 当超过自旋次数就直接返回一个空的list
+            if(currentCount.get() >= spinCount){
+                return Lists.newArrayList();
+            }
         }
     }
 
@@ -220,8 +232,8 @@ public class ZhiHuDaoMysqlImpl implements ZhiHuDao {
 
 
     @Override
-    public boolean isExistUserInAnswer(Connection cn, String userToken) {
-        String isContainUserSql = "select count(*) from answer WHERE user_token='" + userToken + "'";
+    public boolean isExistUserInAnswer(Connection cn, String userToken, Integer answerId) {
+        String isContainUserSql = "select count(*) from answer WHERE user_token='" + userToken + "' and answer_id='" + answerId + "'";
         try {
             if(isExistRecord(cn, isContainUserSql)){
                 return true;

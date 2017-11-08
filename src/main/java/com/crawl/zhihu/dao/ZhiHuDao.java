@@ -37,6 +37,13 @@ public interface ZhiHuDao {
      */
     boolean isExistUser(String userToken);
 
+    /**
+     * 判断当前用户是否已经存入user表
+     *
+     * @param cn
+     * @param userToken
+     * @return
+     */
     boolean isExistUser(Connection cn, String userToken);
 
     /**
@@ -91,9 +98,10 @@ public interface ZhiHuDao {
      *
      * @param cn
      * @param userToken
+     * @param answerId
      * @return
      */
-    boolean isExistUserInAnswer(Connection cn, String userToken);
+    boolean isExistUserInAnswer(Connection cn, String userToken, Integer answerId);
 
     /**
      *

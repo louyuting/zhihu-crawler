@@ -4,7 +4,7 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.crawl.core.parser.ListPageParser;
+import com.crawl.core.parser.UserListPageParser;
 import com.crawl.zhihu.ZhiHuHttpClient;
 import com.crawl.zhihu.entity.Page;
 import com.crawl.zhihu.entity.User;
@@ -15,7 +15,7 @@ import com.jayway.jsonpath.PathNotFoundException;
 /**
  * 用户详情列表页
  */
-public class ZhiHuUserListPageParser implements ListPageParser{
+public class ZhiHuUserListPageParser implements UserListPageParser {
     private static ZhiHuUserListPageParser instance;
     public static ZhiHuUserListPageParser getInstance(){
         if (instance == null){
@@ -29,9 +29,6 @@ public class ZhiHuUserListPageParser implements ListPageParser{
     }
     @Override
     public List<User> parseListPage(Page page) {
-        System.err.println("ZhiHuUserListPageParser");
-
-
         List<User> userList = new ArrayList<>();
         String baseJsonPath = "$.data.length()";
         DocumentContext dc = JsonPath.parse(page.getHtml());

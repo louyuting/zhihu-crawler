@@ -32,9 +32,4 @@ public class GeneralPageTask extends AbstractPageTask{
     public Page getPage(){
         return page;
     }
-
-    @Override
-    void releaseConnection() {
-
-    }
 }

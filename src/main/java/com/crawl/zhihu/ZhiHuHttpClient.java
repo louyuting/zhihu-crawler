@@ -2,6 +2,7 @@ package com.crawl.zhihu;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -18,6 +19,7 @@ import com.crawl.core.util.SimpleThreadPoolExecutor;
 import com.crawl.core.util.ThreadPoolMonitor;
 import com.crawl.proxy.ProxyHttpClient;
 import com.crawl.zhihu.dao.ZhiHuDaoMysqlImpl;
+import com.crawl.zhihu.task.AbstractPageTask;
 import com.crawl.zhihu.task.DetailListPageTask;
 import com.crawl.zhihu.task.GeneralPageTask;
 import com.crawl.zhihu.task.UserAnswerTask;
@@ -39,6 +41,8 @@ public class ZhiHuHttpClient extends AbstractHttpClient implements IHttpClient {
     public static AtomicInteger parseUserAnswerCount = new AtomicInteger(0);
     private static long startTime = System.currentTimeMillis();
     public static volatile boolean isStop = false;
+    private static int currentOffset = 1;
+    private static final int LIMIT = 10;
 
     public static ZhiHuHttpClient getInstance(){
         if (instance == null){
@@ -170,49 +174,95 @@ public class ZhiHuHttpClient extends AbstractHttpClient implements IHttpClient {
      * 管理知乎客户端
      * 关闭整个爬虫
      */
-    public void manageHttpClient(){
+    private void manageHttpClient(){
         while (true) {
-            /**
-             * 下载网页数
-             */
-            long downloadPageCount = detailListPageThreadPool.getTaskCount();
-
-            if (downloadPageCount >= Config.downloadPageCount &&
-                    !detailListPageThreadPool.isShutdown()) {
-                isStop = true;
-                ThreadPoolMonitor.setIsStopMonitor(true);
-                detailListPageThreadPool.shutdown();
-            }
-            if(detailListPageThreadPool.isTerminated()){
-                //关闭数据库连接
-                Map<Thread, Connection> map = DetailListPageTask.getConnectionMap();
-                for(Connection cn : map.values()){
-                    try {
-                        if (cn != null && !cn.isClosed()){
-                            cn.close();
-                        }
-                    } catch (SQLException e) {
-                        e.printStackTrace();
-                    }
-                }
-                //关闭代理检测线程池
-                ProxyHttpClient.getInstance().getProxyTestThreadExecutor().shutdownNow();
-                //关闭代理下载页线程池
-                ProxyHttpClient.getInstance().getProxyDownloadThreadExecutor().shutdownNow();
-
+            manageUserDetailThreadPool();
+            manageUserAnswerThreadPool();
+            if(detailListPageThreadPool.isTerminated() && answerPageThreadPool.isTerminated() && isStop){
                 break;
-            }
-            double costTime = (System.currentTimeMillis() - startTime) / 1000.0;//单位s
-            logger.debug("抓取速率：" + parseUserCount.get() / costTime + "个/s");
-//            logger.info("downloadFailureProxyPageSet size:" + ProxyHttpClient.downloadFailureProxyPageSet.size());
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
             }
         }
     }
 
+    private void manageUserDetailThreadPool(){
+        /**
+         * 下载网页数
+         */
+        long downloadPageCount = detailListPageThreadPool.getTaskCount();
+        if (downloadPageCount >= Config.downloadPageCount &&
+                !detailListPageThreadPool.isShutdown()) {
+            isStop = true;
+            ThreadPoolMonitor.setIsStopMonitor(true);
+            detailListPageThreadPool.shutdown();
+        }
+        if(detailListPageThreadPool.isTerminated()){
+            //关闭数据库连接
+            Map<Thread, Connection> map = DetailListPageTask.getConnectionMap();
+            for(Connection cn : map.values()){
+                closeConnection(cn);
+            }
+            //关闭代理检测线程池
+            ProxyHttpClient.getInstance().getProxyTestThreadExecutor().shutdownNow();
+            //关闭代理下载页线程池
+            ProxyHttpClient.getInstance().getProxyDownloadThreadExecutor().shutdownNow();
+        }
+        double costTime = (System.currentTimeMillis() - startTime) / 1000.0;//单位s
+        logger.debug("抓取速率：" + parseUserCount.get() / costTime + "个/s");
+        try {
+            TimeUnit.SECONDS.sleep(1);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void manageUserAnswerThreadPool(){
+        /**
+         * 下载网页数
+         */
+        long downloadPageCount = answerPageThreadPool.getTaskCount();
+        if (downloadPageCount >= Config.downloadPageCount && !answerPageThreadPool.isShutdown()) {
+            isStop = true;
+            ThreadPoolMonitor.setIsStopMonitor(true);
+            answerPageThreadPool.shutdown();
+        }
+        if(answerPageThreadPool.isTerminated()){
+            //关闭数据库连接
+            Map<Thread, Connection> map = UserAnswerTask.getConnectionMap();
+            for(Connection cn : map.values()){
+                closeConnection(cn);
+            }
+        }
+
+        if(answerPageThreadPool.getQueue().size() < 500){
+            //当前阻塞队列中数据已经不多，说明很少有新增进来数据，则拉取一些新的用户，开始爬取这些用户的答案
+            List<String> userTokenList = AbstractPageTask.getZhiHuDao().listUserTokenLimitNumOrderById(currentOffset, LIMIT);
+            currentOffset += LIMIT;//更新offset位置
+            for (String userToken : userTokenList){
+                String startUrl = String.format(Constants.USER_ANSWER_URL, userToken, 0);
+                HttpRequestBase request = new HttpGet(startUrl);
+                request.setHeader("authorization", "oauth " + ZhiHuHttpClient.getAuthorization());
+                answerPageThreadPool.execute(new UserAnswerTask(request, true, userToken));
+            }
+        }
+
+        double costTime = (System.currentTimeMillis() - startTime) / 1000.0;//单位s
+        logger.debug("抓取速率：" + parseUserAnswerCount.get() / costTime + "个/s");
+        try {
+            TimeUnit.SECONDS.sleep(1);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void closeConnection(Connection cn){
+        try {
+            if (cn != null && !cn.isClosed()){
+                cn.close();
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
 
     public ThreadPoolExecutor getDetailListPageThreadPool() {
         return detailListPageThreadPool;

@@ -1,18 +1,21 @@
 package com.crawl.zhihu.task;
 
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Proxy;
 import java.sql.Connection;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.crawl.core.db.ConnectionManager;
+import com.crawl.core.parser.UserAnswerPageParser;
 import com.crawl.core.util.Config;
 import com.crawl.core.util.Constants;
+import com.crawl.core.util.SimpleInvocationHandler;
 import com.crawl.zhihu.ZhiHuHttpClient;
 import com.crawl.zhihu.entity.Answer;
 import com.crawl.zhihu.entity.Page;
-import com.google.common.collect.Lists;
+import com.crawl.zhihu.parser.ZhiHuUserAnswerListPageParser;
 import com.jayway.jsonpath.DocumentContext;
 import com.jayway.jsonpath.JsonPath;
 import org.apache.http.client.methods.HttpGet;
@@ -29,6 +32,7 @@ import org.slf4j.Logger;
 public class UserAnswerTask extends AbstractPageTask{
 
     private static Logger logger =  Constants.ZHIHU_LOGGER;
+    private static UserAnswerPageParser proxyUserAnswerPageParser;
     private String userToken;
 
     /**
@@ -38,20 +42,33 @@ public class UserAnswerTask extends AbstractPageTask{
      */
     private static Map<Thread, Connection> connectionMap = new ConcurrentHashMap<>();
 
+    static {
+        proxyUserAnswerPageParser = getProxyUserAnswerPageParser();
+    }
+
     public UserAnswerTask(){
 
     }
 
-    /**
-     *
-     * @param request
-     * @param proxyFlag
-     * @param userToken
-     */
     public UserAnswerTask(HttpRequestBase request, boolean proxyFlag, String userToken){
         super(request, proxyFlag);
         this.userToken = userToken;
     }
+
+    /**
+     * 代理类
+     * @return
+     */
+    private static UserAnswerPageParser getProxyUserAnswerPageParser(){
+        UserAnswerPageParser userAnswerPageParser = ZhiHuUserAnswerListPageParser.getInstance();
+        InvocationHandler invocationHandler = new SimpleInvocationHandler(userAnswerPageParser);
+        UserAnswerPageParser proxyUserAnswerPageParser = (UserAnswerPageParser) Proxy.newProxyInstance(
+            userAnswerPageParser.getClass().getClassLoader(),
+                userAnswerPageParser.getClass().getInterfaces(), invocationHandler);
+        return proxyUserAnswerPageParser;
+    }
+
+
 
     @Override
     void retry() {
@@ -60,23 +77,25 @@ public class UserAnswerTask extends AbstractPageTask{
 
     @Override
     void handle(Page page) {
-        DocumentContext dc = JsonPath.parse(page.getHtml());
-        List<Answer> answerList = parseAnswers(dc);
+        List<Answer> answerList = proxyUserAnswerPageParser.parseAnswerListPage(page);
         for(Answer answer : answerList){
             logger.info("解析answer成功: "+ answer.toString());
             if(Config.dbEnable){
                 Connection cn = getConnection();
                 // 判断当前用户是否已经解析过了
-                /*if(zhiHuDao.isExistUserInAnswer(cn, this.userToken)){
-                    return;
-                }*/
+                if(zhiHuDao.isExistUserInAnswer(cn, this.userToken, answer.getAnswerId())){
+                    logger.info("current answer has parsed, answer={}", answer);
+                    continue;
+                }
                 if (zhiHuDao.insertAnswer(cn, answer)){
-                    zhiHuHttpClient.getParseUserAnswerCount().incrementAndGet();
+                    ZhiHuHttpClient.getParseUserAnswerCount().incrementAndGet();
                 } else {
                     logger.error("insert answer fail!, answer={}", answer);
                 }
             }
         }
+
+        DocumentContext dc = JsonPath.parse(page.getHtml());
         boolean isStart = dc.read("$.paging.is_start");
         if (isStart){
             Integer totals = dc.read("$.paging.totals");
@@ -89,52 +108,6 @@ public class UserAnswerTask extends AbstractPageTask{
         }
 
     }
-
-    @Override
-    void releaseConnection() {
-
-    }
-
-
-
-    private List<Answer> parseAnswers(DocumentContext dc){
-        List<Answer> answerList = Lists.newArrayList();
-        try {
-            int answerCount = dc.read("$.data.length()");
-            for(int i = 0; i < answerCount; i++){
-                Answer answer = new Answer();
-                Integer commentCount = dc.read("$.data[" + i +"].comment_count");
-                Integer voteupCount  = dc.read("$.data[" + i +"].voteup_count");
-                String content = dc.read("$.data[" + i + "].content");
-                String excerpt = dc.read("$.data[" + i + "].excerpt");
-                Date createdTime = new Date(((Integer)dc.read("$.data[" + i + "].created_time")).longValue());
-                Date updatedTime = new Date(((Integer)dc.read("$.data[" + i + "].updated_time")).longValue());
-                Integer answerId = dc.read("$.data[" + i + "].id");
-                Integer questionId = dc.read("$.data[" + i + "].question.id");
-                String questionTitle = dc.read("$.data[" + i + "].question.title");
-                String answerUrl = "https://www.zhihu.com/question/%s/answer/%s";
-                answerUrl = String.format(answerUrl, questionId, answerId);
-                String userToken = dc.read("$.data[" + i + "].author.url_token");
-
-                answer.setCommentCount(commentCount);
-                answer.setVoteupCount(voteupCount);
-                answer.setContent(content);
-                answer.setExcerpt(excerpt);
-                answer.setCreatedTime(createdTime);
-                answer.setUpdatedTime(updatedTime);
-                answer.setAnswerId(answerId);
-                answer.setQuestionId(questionId);
-                answer.setQuestionTitle(questionTitle);
-                answer.setAnswerUrl(answerUrl);
-                answer.setUserToken(userToken);
-                answerList.add(answer);
-            }
-        } catch (Throwable e) {
-            logger.error("com.crawl.zhihu.task.UserAnswerTask.parseAnswers error! param={}", dc.toString());
-        }
-        return answerList;
-    }
-
 
     /**
      * 每个thread维护一个Connection

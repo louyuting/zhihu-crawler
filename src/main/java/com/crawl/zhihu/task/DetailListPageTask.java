@@ -8,7 +8,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.crawl.core.db.ConnectionManager;
-import com.crawl.core.parser.ListPageParser;
+import com.crawl.core.parser.UserListPageParser;
 import com.crawl.core.util.Config;
 import com.crawl.core.util.Constants;
 import com.crawl.core.util.Md5Util;
@@ -30,7 +30,7 @@ import static com.crawl.zhihu.ZhiHuHttpClient.parseUserCount;
  */
 public class DetailListPageTask extends AbstractPageTask {
     private static Logger logger =  Constants.ZHIHU_LOGGER;
-    private static ListPageParser proxyUserListPageParser;
+    private static UserListPageParser proxyUserUserListPageParser;
     /**
      * <p>Thread-数据库连接对象 的Map</p>
      * <li>这里维护了一个数据库连接池</li>
@@ -38,7 +38,7 @@ public class DetailListPageTask extends AbstractPageTask {
      */
     private static Map<Thread, Connection> connectionMap = new ConcurrentHashMap<>();
     static {
-        proxyUserListPageParser = getProxyUserListPageParser();
+        proxyUserUserListPageParser = getProxyUserUserListPageParser();
     }
 
     public DetailListPageTask(HttpRequestBase request, boolean proxyFlag) {
@@ -53,12 +53,13 @@ public class DetailListPageTask extends AbstractPageTask {
      * 代理类
      * @return
      */
-    private static ListPageParser getProxyUserListPageParser(){
-        ListPageParser userListPageParser = ZhiHuUserListPageParser.getInstance();
-        InvocationHandler invocationHandler = new SimpleInvocationHandler(userListPageParser);
-        ListPageParser proxyUserListPageParser = (ListPageParser) Proxy.newProxyInstance(userListPageParser.getClass().getClassLoader(),
-                userListPageParser.getClass().getInterfaces(), invocationHandler);
-        return proxyUserListPageParser;
+    private static UserListPageParser getProxyUserUserListPageParser(){
+        UserListPageParser userUserListPageParser = ZhiHuUserListPageParser.getInstance();
+        InvocationHandler invocationHandler = new SimpleInvocationHandler(userUserListPageParser);
+        UserListPageParser proxyUserUserListPageParser = (UserListPageParser) Proxy.newProxyInstance(
+            userUserListPageParser.getClass().getClassLoader(),
+                userUserListPageParser.getClass().getInterfaces(), invocationHandler);
+        return proxyUserUserListPageParser;
     }
 
     @Override
@@ -73,8 +74,6 @@ public class DetailListPageTask extends AbstractPageTask {
     @Override
     void handle(Page page) {
 
-        System.err.println("DetailListPageTask");
-
         // check 爬虫爬取到的是关注的人用户信息的接口
         if(!page.getHtml().startsWith("{\"paging\"")){
             //代理异常，未能正确返回目标请求数据，丢弃
@@ -82,7 +81,7 @@ public class DetailListPageTask extends AbstractPageTask {
             return;
         }
         //获取当前用户关注的人的列表
-        List<User> list = proxyUserListPageParser.parseListPage(page);
+        List<User> list = proxyUserUserListPageParser.parseListPage(page);
         for(User u : list){
             logger.info("解析用户成功:" + u.toString());
             if(Config.dbEnable){
@@ -113,15 +112,6 @@ public class DetailListPageTask extends AbstractPageTask {
                     zhiHuHttpClient.getDetailListPageThreadPool().execute(new DetailListPageTask(request, true));
                 }
             }
-        }
-    }
-
-    @Override
-    void releaseConnection(){
-        try {
-            //getConnectionMap().get(Thread.currentThread()).close();
-        } catch (Exception e) {
-            logger.error("DetailListPageTask.releaseConnection() error! track={}", e);
         }
     }
 

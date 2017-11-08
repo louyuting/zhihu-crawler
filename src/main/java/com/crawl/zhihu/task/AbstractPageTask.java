@@ -35,7 +35,7 @@ public abstract class AbstractPageTask implements Runnable{
 	protected static ZhiHuDao zhiHuDao;
 	protected static ZhiHuHttpClient zhiHuHttpClient = ZhiHuHttpClient.getInstance();
 	static {
-		zhiHuDao = getZhiHuDao();
+		zhiHuDao = newZhiHuDaoInstanceProxy();
 	}
 	public AbstractPageTask(){
 
@@ -138,7 +138,6 @@ public abstract class AbstractPageTask implements Runnable{
 				currentProxy.setTimeInterval(Constants.TIME_INTERVAL);
 				ProxyPool.proxyQueue.add(currentProxy);
 			}
-            releaseConnection();
 		}
 	}
 
@@ -153,11 +152,6 @@ public abstract class AbstractPageTask implements Runnable{
 	 */
 	abstract void handle(Page page);
 
-    /**
-     * 子类实现，释放数据库连接资源
-     */
-	abstract void releaseConnection();
-
 	private String getProxyStr(Proxy proxy){
 		if (proxy == null){
 			return "";
@@ -168,11 +162,15 @@ public abstract class AbstractPageTask implements Runnable{
 	 * 代理DAO类，统计方法执行时间
 	 * @return
 	 */
-	private static ZhiHuDao getZhiHuDao(){
+	private static ZhiHuDao newZhiHuDaoInstanceProxy(){
 		ZhiHuDao zhiHuDao = new ZhiHuDaoMysqlImpl();
 		InvocationHandler invocationHandler = new SimpleInvocationHandler(zhiHuDao);
 		ZhiHuDao proxyZhiHuDao = (ZhiHuDao) java.lang.reflect.Proxy.newProxyInstance(zhiHuDao.getClass().getClassLoader(),
 				zhiHuDao.getClass().getInterfaces(), invocationHandler);
 		return proxyZhiHuDao;
 	}
+
+    public static ZhiHuDao getZhiHuDao() {
+        return zhiHuDao;
+    }
 }
