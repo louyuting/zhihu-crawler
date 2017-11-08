@@ -30,6 +30,7 @@ import org.slf4j.Logger;
 
 public class ZhiHuHttpClient extends AbstractHttpClient implements IHttpClient {
     private static Logger logger =  Constants.ZHIHU_LOGGER;
+    private static Logger sudu_logger =  Constants.SUDU_LOGGER;
     private volatile static ZhiHuHttpClient instance;
     /**
      * 统计用户数量
@@ -71,7 +72,7 @@ public class ZhiHuHttpClient extends AbstractHttpClient implements IHttpClient {
     private static String authorization;
     private ZhiHuHttpClient() {
         initDB();
-        initThreadPool();
+        //initThreadPool();
     }
     /**
      * 初始化HttpClient
@@ -87,8 +88,8 @@ public class ZhiHuHttpClient extends AbstractHttpClient implements IHttpClient {
      * 初始化线程池
      */
     private void initThreadPool(){
-        detailListPageThreadPool = new SimpleThreadPoolExecutor(Config.downloadThreadSize,
-                Config.downloadThreadSize,
+        detailListPageThreadPool = new SimpleThreadPoolExecutor(Config.downloadUserPageThreadSize,
+                Config.downloadUserPageThreadSize,
                 0L, TimeUnit.MILLISECONDS,
                 new LinkedBlockingQueue<Runnable>(2000),
                 new ThreadPoolExecutor.DiscardPolicy(),
@@ -110,12 +111,12 @@ public class ZhiHuHttpClient extends AbstractHttpClient implements IHttpClient {
 
 
     public void startCrawlAnswer(String userToken){
-        answerPageThreadPool = new SimpleThreadPoolExecutor(Config.downloadThreadSize,
-                Config.downloadThreadSize,
+        answerPageThreadPool = new SimpleThreadPoolExecutor(Config.downloadUserAnswerThreadSize,
+                Config.downloadUserAnswerThreadSize,
                 0L, TimeUnit.MILLISECONDS,
-                new LinkedBlockingQueue<Runnable>(2000),
+                new LinkedBlockingQueue<Runnable>(3000),
                 new ThreadPoolExecutor.DiscardPolicy(),
-                "answerPageThreadPool");
+                "AnswerPageThreadPool");
         new Thread(new ThreadPoolMonitor(answerPageThreadPool, "AnswerPageThreadPool")).start();
         if(StringUtils.isBlank(authorization)){
             authorization = initAuthorization();
@@ -124,6 +125,7 @@ public class ZhiHuHttpClient extends AbstractHttpClient implements IHttpClient {
         HttpRequestBase request = new HttpGet(startUrl);
         request.setHeader("authorization", "oauth " + ZhiHuHttpClient.getAuthorization());
         answerPageThreadPool.execute(new UserAnswerTask(request, true, userToken));
+        manageHttpClient();
     }
 
 
@@ -135,7 +137,6 @@ public class ZhiHuHttpClient extends AbstractHttpClient implements IHttpClient {
         logger.info("初始化authoriztion中...");
         String content = null;
 
-//            content = HttpClientUtil.getWebPage(Config.startURL);
         GeneralPageTask generalPageTask = new GeneralPageTask(Config.startURL, true);
         generalPageTask.run();
         content = generalPageTask.getPage().getHtml();
@@ -149,11 +150,6 @@ public class ZhiHuHttpClient extends AbstractHttpClient implements IHttpClient {
             throw new RuntimeException("not find javascript url");
         }
         String jsContent = null;
-//        try {
-//            jsContent = HttpClientUtil.getWebPage(jsSrc);
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
         GeneralPageTask jsPageTask = new GeneralPageTask(jsSrc, true);
         jsPageTask.run();
         jsContent = jsPageTask.getPage().getHtml();
@@ -176,9 +172,9 @@ public class ZhiHuHttpClient extends AbstractHttpClient implements IHttpClient {
      */
     private void manageHttpClient(){
         while (true) {
-            manageUserDetailThreadPool();
+            //manageUserDetailThreadPool();
             manageUserAnswerThreadPool();
-            if(detailListPageThreadPool.isTerminated() && answerPageThreadPool.isTerminated() && isStop){
+            if(answerPageThreadPool.isTerminated() && isStop){
                 break;
             }
         }
@@ -189,7 +185,7 @@ public class ZhiHuHttpClient extends AbstractHttpClient implements IHttpClient {
          * 下载网页数
          */
         long downloadPageCount = detailListPageThreadPool.getTaskCount();
-        if (downloadPageCount >= Config.downloadPageCount &&
+        if (downloadPageCount >= Config.downloadUserPageCount &&
                 !detailListPageThreadPool.isShutdown()) {
             isStop = true;
             ThreadPoolMonitor.setIsStopMonitor(true);
@@ -207,7 +203,7 @@ public class ZhiHuHttpClient extends AbstractHttpClient implements IHttpClient {
             ProxyHttpClient.getInstance().getProxyDownloadThreadExecutor().shutdownNow();
         }
         double costTime = (System.currentTimeMillis() - startTime) / 1000.0;//单位s
-        logger.debug("抓取速率：" + parseUserCount.get() / costTime + "个/s");
+        sudu_logger.debug("抓取速率：" + parseUserCount.get() / costTime + "个/s");
         try {
             TimeUnit.SECONDS.sleep(1);
         } catch (InterruptedException e) {
@@ -220,7 +216,7 @@ public class ZhiHuHttpClient extends AbstractHttpClient implements IHttpClient {
          * 下载网页数
          */
         long downloadPageCount = answerPageThreadPool.getTaskCount();
-        if (downloadPageCount >= Config.downloadPageCount && !answerPageThreadPool.isShutdown()) {
+        if (downloadPageCount >= Config.downloadUserAnswerPageCount && !answerPageThreadPool.isShutdown()) {
             isStop = true;
             ThreadPoolMonitor.setIsStopMonitor(true);
             answerPageThreadPool.shutdown();
@@ -236,6 +232,10 @@ public class ZhiHuHttpClient extends AbstractHttpClient implements IHttpClient {
         if(answerPageThreadPool.getQueue().size() < 500){
             //当前阻塞队列中数据已经不多，说明很少有新增进来数据，则拉取一些新的用户，开始爬取这些用户的答案
             List<String> userTokenList = AbstractPageTask.getZhiHuDao().listUserTokenLimitNumOrderById(currentOffset, LIMIT);
+            logger.info("load new user_token, list={}");
+            for (String e : userTokenList){
+                logger.info("new userToken={}", e);
+            }
             currentOffset += LIMIT;//更新offset位置
             for (String userToken : userTokenList){
                 String startUrl = String.format(Constants.USER_ANSWER_URL, userToken, 0);
@@ -244,9 +244,8 @@ public class ZhiHuHttpClient extends AbstractHttpClient implements IHttpClient {
                 answerPageThreadPool.execute(new UserAnswerTask(request, true, userToken));
             }
         }
-
         double costTime = (System.currentTimeMillis() - startTime) / 1000.0;//单位s
-        logger.debug("抓取速率：" + parseUserAnswerCount.get() / costTime + "个/s");
+        sudu_logger.debug("抓取速率：" + parseUserAnswerCount.get() / costTime + "个/s");
         try {
             TimeUnit.SECONDS.sleep(1);
         } catch (InterruptedException e) {

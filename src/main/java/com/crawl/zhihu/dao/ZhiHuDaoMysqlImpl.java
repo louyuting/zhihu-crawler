@@ -2,7 +2,6 @@ package com.crawl.zhihu.dao;
 
 import java.io.IOException;
 import java.sql.Connection;
-import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -28,8 +27,9 @@ import org.slf4j.Logger;
 public class ZhiHuDaoMysqlImpl implements ZhiHuDao {
     private static Logger logger =  Constants.ZHIHU_LOGGER;
 
-    private static final int spinCount = 30;
+    private static final int spinMax = 30;
     private static AtomicInteger currentCount = new AtomicInteger(0);
+    private static final int TEST_MAX_LENGTH = 30000;
 
     /**
      * 数据库表初始化
@@ -196,14 +196,22 @@ public class ZhiHuDaoMysqlImpl implements ZhiHuDao {
                 while (rs.next()){
                     res.add(rs.getString("user_token"));
                 }
+                // TODO check 当前的 userToken 是否已经在answer中了，也就是是否已经爬取过了。
+                List<String> existed = Lists.newArrayList();
+                for(String userToken : res){
+                    if (isExistUserInAnswer(cn, userToken)){
+                        existed.add(userToken);
+                    }
+                }
+                res.removeAll(existed);
                 return res;
-            } catch (SQLException e) {
+            } catch (Exception e) {
                 e.printStackTrace();
                 logger.error("com.crawl.zhihu.dao.ZhiHuDaoMysqlImpl.listUserTokenLimitNumOrderById error! offset={}, limit={}", offset, limit);
                 offset ++;
             }
             // 当超过自旋次数就直接返回一个空的list
-            if(currentCount.get() >= spinCount){
+            if(currentCount.get() >= spinMax){
                 return Lists.newArrayList();
             }
         }
@@ -230,9 +238,21 @@ public class ZhiHuDaoMysqlImpl implements ZhiHuDao {
         return true;
     }
 
+    @Override
+    public boolean isExistUserInAnswer(Connection cn, String userToken) {
+        String isContainUserSql = "select count(*) from answer WHERE user_token='" + userToken + "'";
+        try {
+            if(isExistRecord(cn, isContainUserSql)){
+                return true;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
 
     @Override
-    public boolean isExistUserInAnswer(Connection cn, String userToken, Integer answerId) {
+    public boolean isExistUserAnswer(Connection cn, String userToken, Integer answerId) {
         String isContainUserSql = "select count(*) from answer WHERE user_token='" + userToken + "' and answer_id='" + answerId + "'";
         try {
             if(isExistRecord(cn, isContainUserSql)){
@@ -271,10 +291,16 @@ public class ZhiHuDaoMysqlImpl implements ZhiHuDao {
             pstmt = cn.prepareStatement(sql);
             pstmt.setInt(1,answer.getCommentCount());
             pstmt.setInt(2,answer.getVoteupCount());
+            if(answer.getContent().length() > TEST_MAX_LENGTH){
+                answer.setContent(answer.getContent().substring(0, TEST_MAX_LENGTH));
+            }
+            if(answer.getExcerpt().length() > TEST_MAX_LENGTH){
+                answer.setExcerpt(answer.getExcerpt().substring(0, TEST_MAX_LENGTH));
+            }
             pstmt.setString(3,answer.getContent());
             pstmt.setString(4,answer.getExcerpt());
-            pstmt.setDate(5,new Date(answer.getCreatedTime().getTime()));
-            pstmt.setDate(6,new Date(answer.getUpdatedTime().getTime()));
+            pstmt.setInt(5, answer.getCreatedTime());
+            pstmt.setInt(6, answer.getUpdatedTime());
             pstmt.setInt(7,answer.getAnswerId());
             pstmt.setInt(8,answer.getQuestionId());
             pstmt.setString(9,answer.getQuestionTitle());
@@ -282,7 +308,7 @@ public class ZhiHuDaoMysqlImpl implements ZhiHuDao {
             pstmt.setString(11,answer.getUserToken());
             pstmt.executeUpdate();
             pstmt.close();
-            logger.info("插入数据库成功---" + answer.getQuestionTitle() + "----" +answer.getExcerpt());
+            logger.info("插入数据库成功---" + answer.getQuestionTitle() + "----" +answer.getQuestionId() + "----" +answer.getAnswerId());
         } catch (SQLException e) {
             e.printStackTrace();
             logger.error("insert answer error, answer={}", answer);

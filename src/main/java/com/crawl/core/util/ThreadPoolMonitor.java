@@ -10,12 +10,12 @@ import org.slf4j.Logger;
 public class ThreadPoolMonitor implements Runnable{
     private static Logger logger = Constants.MONITOR_LOGGER;
 
-    public static volatile boolean isStopMonitor = false;
+    private static volatile boolean isStopMonitor = false;
     private ThreadPoolExecutor executor;
     private String threadPoolName = "";
 
     /**
-     * @param executor
+     * @param executor 线程池
      * @param threadPoolName  线程池 threadPoolName
      */
     public ThreadPoolMonitor(ThreadPoolExecutor executor, String threadPoolName){

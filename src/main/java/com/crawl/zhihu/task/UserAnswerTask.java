@@ -6,6 +6,7 @@ import java.sql.Connection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 import com.crawl.core.db.ConnectionManager;
 import com.crawl.core.parser.UserAnswerPageParser;
@@ -83,7 +84,7 @@ public class UserAnswerTask extends AbstractPageTask{
             if(Config.dbEnable){
                 Connection cn = getConnection();
                 // 判断当前用户是否已经解析过了
-                if(zhiHuDao.isExistUserInAnswer(cn, this.userToken, answer.getAnswerId())){
+                if(zhiHuDao.isExistUserAnswer(cn, this.userToken, answer.getAnswerId())){
                     logger.info("current answer has parsed, answer={}", answer);
                     continue;
                 }
@@ -106,7 +107,11 @@ public class UserAnswerTask extends AbstractPageTask{
                 zhiHuHttpClient.getAnswerPageThreadPool().execute(new UserAnswerTask(request, true, userToken));
             }
         }
-
+        try {
+            TimeUnit.MILLISECONDS.sleep(10);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
     /**

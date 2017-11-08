@@ -1,7 +1,5 @@
 package com.crawl.zhihu.entity;
 
-import java.util.Date;
-
 import org.apache.commons.lang3.builder.ToStringBuilder;
 
 /**
@@ -27,11 +25,11 @@ public class Answer {
     /**
      * 答案创建时间
      */
-    private Date createdTime;
+    private Integer createdTime;
     /**
      * 更新时间
      */
-    private Date updatedTime;
+    private Integer updatedTime;
     /**
      * answer id
      */
@@ -77,19 +75,19 @@ public class Answer {
         this.excerpt = excerpt;
     }
 
-    public Date getCreatedTime() {
+    public Integer getCreatedTime() {
         return createdTime;
     }
 
-    public void setCreatedTime(Date createdTime) {
+    public void setCreatedTime(Integer createdTime) {
         this.createdTime = createdTime;
     }
 
-    public Date getUpdatedTime() {
+    public Integer getUpdatedTime() {
         return updatedTime;
     }
 
-    public void setUpdatedTime(Date updatedTime) {
+    public void setUpdatedTime(Integer updatedTime) {
         this.updatedTime = updatedTime;
     }
 

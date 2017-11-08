@@ -47,5 +47,6 @@ public class Constants {
      */
     public static Logger ZHIHU_LOGGER = LoggerFactory.getLogger("zhihu");
     public static Logger MONITOR_LOGGER = LoggerFactory.getLogger("monitor");
+    public static Logger SUDU_LOGGER = LoggerFactory.getLogger("sudu");
     //public static Logger CONSOLE_LOGGER = LoggerFactory.getLogger("console");
 }

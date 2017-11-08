@@ -16,9 +16,13 @@ public class Config {
      */
     public static boolean isProxy;
     /**
-     * 下载网页线程数
+     * 用户信息线程数
      */
-    public static int downloadThreadSize;
+    public static int downloadUserPageThreadSize;
+    /**
+     * 用户答案线程数
+     */
+    public static int downloadUserAnswerThreadSize;
     /**
      * 验证码路径
      */
@@ -38,9 +42,13 @@ public class Config {
 
     public static String startUserToken;
     /**
-     * 下载网页数
+     * 下载用户信息网页数
      */
-    public static int downloadPageCount;
+    public static int downloadUserPageCount;
+    /**
+     * 下载用户答案网页数
+     */
+    public static int downloadUserAnswerPageCount;
     /**
      * db.name
      */
@@ -93,8 +101,10 @@ public class Config {
         password = p.getProperty("zhiHu.password");
         startURL = p.getProperty("startURL");
         startUserToken = p.getProperty("startUserToken");
-        downloadPageCount = Integer.valueOf(p.getProperty("downloadPageCount"));
-        downloadThreadSize = Integer.valueOf(p.getProperty("downloadThreadSize"));
+        downloadUserPageThreadSize = Integer.valueOf(p.getProperty("downloadUserPageThreadSize"));
+        downloadUserAnswerThreadSize = Integer.valueOf(p.getProperty("downloadUserAnswerThreadSize"));
+        downloadUserPageCount = Integer.valueOf(p.getProperty("downloadUserPageCount"));
+        downloadUserAnswerPageCount = Integer.valueOf(p.getProperty("downloadUserAnswerPageCount"));
         cookiePath = p.getProperty("cookiePath");
         proxyPath = p.getProperty("proxyPath");
         isProxy = Boolean.valueOf(p.getProperty("isProxy"));

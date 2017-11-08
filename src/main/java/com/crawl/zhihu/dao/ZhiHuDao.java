@@ -94,16 +94,26 @@ public interface ZhiHuDao {
     boolean insertUrl(Connection cn, String md5Url);
 
     /**
-     * 判断当前user的答案是否已经解析过了。
+     * 判断当前用户是否已经在answer表中
+     *
+     * @param cn
+     * @param userToken
+     * @return
+     */
+    boolean isExistUserInAnswer(Connection cn, String userToken);
+
+    /**
+     * 判断当前user的当前答案是否已经解析过了。
      *
      * @param cn
      * @param userToken
      * @param answerId
      * @return
      */
-    boolean isExistUserInAnswer(Connection cn, String userToken, Integer answerId);
+    boolean isExistUserAnswer(Connection cn, String userToken, Integer answerId);
 
     /**
+     * 判断当前answer是都已经解析过了
      *
      * @param cn
      * @param answerId

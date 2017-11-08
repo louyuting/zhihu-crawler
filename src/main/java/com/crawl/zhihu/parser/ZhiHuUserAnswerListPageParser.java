@@ -52,8 +52,8 @@ public class ZhiHuUserAnswerListPageParser implements UserAnswerPageParser {
                 Integer voteupCount  = dc.read("$.data[" + i +"].voteup_count");
                 String content = dc.read("$.data[" + i + "].content");
                 String excerpt = dc.read("$.data[" + i + "].excerpt");
-                Date createdTime = new Date(((Integer)dc.read("$.data[" + i + "].created_time")).longValue());
-                Date updatedTime = new Date(((Integer)dc.read("$.data[" + i + "].updated_time")).longValue());
+                Integer createdTime = dc.read("$.data[" + i + "].created_time");
+                Integer updatedTime = dc.read("$.data[" + i + "].updated_time");
                 Integer answerId = dc.read("$.data[" + i + "].id");
                 Integer questionId = dc.read("$.data[" + i + "].question.id");
                 String questionTitle = dc.read("$.data[" + i + "].question.title");

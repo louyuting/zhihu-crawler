@@ -1,7 +1,6 @@
 package com.crawl.zhihu.dao;
 
 import java.sql.SQLException;
-import java.util.Date;
 import java.util.List;
 
 import com.crawl.core.db.ConnectionManager;
@@ -29,8 +28,8 @@ public class ZhihuDAOTest {
         Answer answer = new Answer();
         answer.setCommentCount(20);
         answer.setVoteupCount(20);
-        answer.setCreatedTime(new Date());
-        answer.setUpdatedTime(new Date());
+        answer.setCreatedTime(123543213);
+        answer.setUpdatedTime(333333333);
         answer.setContent("<p>答案</p>");
         answer.setExcerpt("答案");
         answer.setAnswerUrl("http://dnidn");
