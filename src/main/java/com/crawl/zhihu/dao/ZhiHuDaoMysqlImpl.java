@@ -29,7 +29,7 @@ public class ZhiHuDaoMysqlImpl implements ZhiHuDao {
 
     private static final int spinMax = 30;
     private static AtomicInteger currentCount = new AtomicInteger(0);
-    private static final int TEST_MAX_LENGTH = 30000;
+    private static final int TEXT_MAX_LENGTH = 30000;
 
     /**
      * 数据库表初始化
@@ -196,7 +196,6 @@ public class ZhiHuDaoMysqlImpl implements ZhiHuDao {
                 while (rs.next()){
                     res.add(rs.getString("user_token"));
                 }
-                // TODO check 当前的 userToken 是否已经在answer中了，也就是是否已经爬取过了。
                 List<String> existed = Lists.newArrayList();
                 for(String userToken : res){
                     if (isExistUserInAnswer(cn, userToken)){
@@ -291,11 +290,11 @@ public class ZhiHuDaoMysqlImpl implements ZhiHuDao {
             pstmt = cn.prepareStatement(sql);
             pstmt.setInt(1,answer.getCommentCount());
             pstmt.setInt(2,answer.getVoteupCount());
-            if(answer.getContent().length() > TEST_MAX_LENGTH){
-                answer.setContent(answer.getContent().substring(0, TEST_MAX_LENGTH));
+            if(answer.getContent().length() > TEXT_MAX_LENGTH){
+                answer.setContent(answer.getContent().substring(0, TEXT_MAX_LENGTH));
             }
-            if(answer.getExcerpt().length() > TEST_MAX_LENGTH){
-                answer.setExcerpt(answer.getExcerpt().substring(0, TEST_MAX_LENGTH));
+            if(answer.getExcerpt().length() > TEXT_MAX_LENGTH){
+                answer.setExcerpt(answer.getExcerpt().substring(0, TEXT_MAX_LENGTH));
             }
             pstmt.setString(3,answer.getContent());
             pstmt.setString(4,answer.getExcerpt());

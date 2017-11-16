@@ -1,7 +1,6 @@
 package com.crawl;
 
-import com.crawl.core.util.Config;
-import com.crawl.zhihu.ZhiHuHttpClient;
+import com.crawl.zhihu.ZhiHuUserHttpClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,7 +13,7 @@ public class Main {
 
     public static void main(String args []){
         //ProxyHttpClient.getInstance().startCrawl();
-        //ZhiHuHttpClient.getInstance().startCrawl();
-        ZhiHuHttpClient.getInstance().startCrawlAnswer(Config.startUserToken);
+        //ZhiHuUserHttpClient.getInstance().startCrawl(Config.startUserToken);
+        ZhiHuUserHttpClient.getInstance().startCrawl();
     }
 }

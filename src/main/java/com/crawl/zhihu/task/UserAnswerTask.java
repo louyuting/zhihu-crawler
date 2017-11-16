@@ -13,7 +13,7 @@ import com.crawl.core.parser.UserAnswerPageParser;
 import com.crawl.core.util.Config;
 import com.crawl.core.util.Constants;
 import com.crawl.core.util.SimpleInvocationHandler;
-import com.crawl.zhihu.ZhiHuHttpClient;
+import com.crawl.zhihu.ZhiHuUserAnswerHttpClient;
 import com.crawl.zhihu.entity.Answer;
 import com.crawl.zhihu.entity.Page;
 import com.crawl.zhihu.parser.ZhiHuUserAnswerListPageParser;
@@ -42,6 +42,8 @@ public class UserAnswerTask extends AbstractPageTask{
      * <li>里面保存的连接对象数量与线程池里面数量有关系.</li>
      */
     private static Map<Thread, Connection> connectionMap = new ConcurrentHashMap<>();
+
+    private static ZhiHuUserAnswerHttpClient zhiHuUserAnswerHttpClient = ZhiHuUserAnswerHttpClient.getInstance();
 
     static {
         proxyUserAnswerPageParser = getProxyUserAnswerPageParser();
@@ -73,7 +75,7 @@ public class UserAnswerTask extends AbstractPageTask{
 
     @Override
     void retry() {
-        zhiHuHttpClient.getAnswerPageThreadPool().execute(new UserAnswerTask(request, true, this.userToken));
+        zhiHuUserAnswerHttpClient.getThreadPool().execute(new UserAnswerTask(request, true, this.userToken));
     }
 
     @Override
@@ -83,13 +85,13 @@ public class UserAnswerTask extends AbstractPageTask{
             logger.info("解析answer成功: "+ answer.toString());
             if(Config.dbEnable){
                 Connection cn = getConnection();
-                // 判断当前用户是否已经解析过了
+                // 判断当前用户的当前答案是否已经解析过了
                 if(zhiHuDao.isExistUserAnswer(cn, this.userToken, answer.getAnswerId())){
                     logger.info("current answer has parsed, answer={}", answer);
                     continue;
                 }
                 if (zhiHuDao.insertAnswer(cn, answer)){
-                    ZhiHuHttpClient.getParseUserAnswerCount().incrementAndGet();
+                    zhiHuUserAnswerHttpClient.getParseUserAnswerCount().incrementAndGet();
                 } else {
                     logger.error("insert answer fail!, answer={}", answer);
                 }
@@ -103,8 +105,8 @@ public class UserAnswerTask extends AbstractPageTask{
             for (int j = 1; j < totals; j++) {
                 String nextUrl = String.format(Constants.USER_ANSWER_URL, userToken, j * 20);
                 HttpRequestBase request = new HttpGet(nextUrl);
-                request.setHeader("authorization", "oauth " + ZhiHuHttpClient.getAuthorization());
-                zhiHuHttpClient.getAnswerPageThreadPool().execute(new UserAnswerTask(request, true, userToken));
+                request.setHeader("authorization", "oauth " + zhiHuUserAnswerHttpClient.getAuthorization());
+                zhiHuUserAnswerHttpClient.getThreadPool().execute(new UserAnswerTask(request, true, userToken));
             }
         }
         try {

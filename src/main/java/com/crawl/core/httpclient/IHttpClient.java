@@ -1,8 +1,8 @@
 package com.crawl.core.httpclient;
 
+import java.util.concurrent.ThreadPoolExecutor;
 
 public interface IHttpClient {
-
 
     /**
      * 初始化客户端
@@ -15,4 +15,10 @@ public interface IHttpClient {
      * 爬虫入口
      */
     void startCrawl();
+
+    void startCrawl(String userToken);
+
+    String getAuthorization();
+
+    ThreadPoolExecutor getThreadPool();
 }

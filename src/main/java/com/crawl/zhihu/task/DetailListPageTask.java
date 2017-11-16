@@ -13,7 +13,7 @@ import com.crawl.core.util.Config;
 import com.crawl.core.util.Constants;
 import com.crawl.core.util.Md5Util;
 import com.crawl.core.util.SimpleInvocationHandler;
-import com.crawl.zhihu.ZhiHuHttpClient;
+import com.crawl.zhihu.ZhiHuUserHttpClient;
 import com.crawl.zhihu.entity.Page;
 import com.crawl.zhihu.entity.User;
 import com.crawl.zhihu.parser.ZhiHuUserListPageParser;
@@ -23,7 +23,7 @@ import org.apache.http.client.methods.HttpRequestBase;
 import org.slf4j.Logger;
 
 import static com.crawl.core.util.Constants.USER_FOLLOWEES_URL;
-import static com.crawl.zhihu.ZhiHuHttpClient.parseUserCount;
+import static com.crawl.zhihu.ZhiHuUserHttpClient.parseUserCount;
 
 /**
  * 知乎用户列表详情页task
@@ -37,6 +37,8 @@ public class DetailListPageTask extends AbstractPageTask {
      * <li>里面保存的连接对象数量与线程池里面数量有关系.</li>
      */
     private static Map<Thread, Connection> connectionMap = new ConcurrentHashMap<>();
+    private static ZhiHuUserHttpClient zhiHuUserHttpClient = ZhiHuUserHttpClient.getInstance();
+
     static {
         proxyUserUserListPageParser = getProxyUserUserListPageParser();
     }
@@ -56,18 +58,17 @@ public class DetailListPageTask extends AbstractPageTask {
     private static UserListPageParser getProxyUserUserListPageParser(){
         UserListPageParser userUserListPageParser = ZhiHuUserListPageParser.getInstance();
         InvocationHandler invocationHandler = new SimpleInvocationHandler(userUserListPageParser);
-        UserListPageParser proxyUserUserListPageParser = (UserListPageParser) Proxy.newProxyInstance(
+        return  (UserListPageParser) Proxy.newProxyInstance(
             userUserListPageParser.getClass().getClassLoader(),
                 userUserListPageParser.getClass().getInterfaces(), invocationHandler);
-        return proxyUserUserListPageParser;
     }
 
     @Override
     void retry() {
         if(request != null){
-            zhiHuHttpClient.getDetailListPageThreadPool().execute(new DetailListPageTask(request, Config.isProxy));
+            zhiHuUserHttpClient.getThreadPool().execute(new DetailListPageTask(request, Config.isProxy));
         } else if (StringUtils.isNotBlank(url)){
-            zhiHuHttpClient.getDetailListPageThreadPool().execute(new DetailListPageTask(url, Config.isProxy));
+            zhiHuUserHttpClient.getThreadPool().execute(new DetailListPageTask(url, Config.isProxy));
         }
     }
 
@@ -90,26 +91,26 @@ public class DetailListPageTask extends AbstractPageTask {
                     parseUserCount.incrementAndGet();
                 }
                 for (int j = 0; j < u.getFollowees() / 20; j++){
-                    if (zhiHuHttpClient.getDetailListPageThreadPool().getQueue().size() > 1000){
+                    if (zhiHuUserHttpClient.getThreadPool().getQueue().size() > 1000){
                         continue;
                     }
                     String nextUrl = String.format(USER_FOLLOWEES_URL, u.getUserToken(), j * 20);
                     if (zhiHuDao.insertUrl(cn, Md5Util.Convert2Md5(nextUrl)) ||
-                            zhiHuHttpClient.getDetailListPageThreadPool().getActiveCount() == 1){
+                            zhiHuUserHttpClient.getThreadPool().getActiveCount() == 1){
                         //防止死锁
                         HttpGet request = new HttpGet(nextUrl);
-                        request.setHeader("authorization", "oauth " + ZhiHuHttpClient.getAuthorization());
-                        zhiHuHttpClient.getDetailListPageThreadPool().execute(new DetailListPageTask(request, true));
+                        request.setHeader("authorization", "oauth " + zhiHuUserHttpClient.getAuthorization());
+                        zhiHuUserHttpClient.getThreadPool().execute(new DetailListPageTask(request, true));
                     }
                 }
             }
-            else if(!Config.dbEnable || zhiHuHttpClient.getDetailListPageThreadPool().getActiveCount() == 1){
+            else if(!Config.dbEnable || zhiHuUserHttpClient.getThreadPool().getActiveCount() == 1){
                 parseUserCount.incrementAndGet();
                 for (int j = 0; j < u.getFollowees() / 20; j++){
                     String nextUrl = String.format(USER_FOLLOWEES_URL, u.getUserToken(), j * 20);
                     HttpGet request = new HttpGet(nextUrl);
-                    request.setHeader("authorization", "oauth " + ZhiHuHttpClient.getAuthorization());
-                    zhiHuHttpClient.getDetailListPageThreadPool().execute(new DetailListPageTask(request, true));
+                    request.setHeader("authorization", "oauth " + zhiHuUserHttpClient.getAuthorization());
+                    zhiHuUserHttpClient.getThreadPool().execute(new DetailListPageTask(request, true));
                 }
             }
         }

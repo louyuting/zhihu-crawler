@@ -10,7 +10,7 @@ import com.crawl.proxy.ProxyPool;
 import com.crawl.proxy.entity.Direct;
 import com.crawl.proxy.entity.Proxy;
 import com.crawl.proxy.util.ProxyUtil;
-import com.crawl.zhihu.ZhiHuHttpClient;
+import com.crawl.zhihu.CommonHttpClientUtils;
 import com.crawl.zhihu.dao.ZhiHuDao;
 import com.crawl.zhihu.dao.ZhiHuDaoMysqlImpl;
 import com.crawl.zhihu.entity.Page;
@@ -28,12 +28,11 @@ import org.slf4j.Logger;
  */
 public abstract class AbstractPageTask implements Runnable{
 	private static Logger logger =  Constants.ZHIHU_LOGGER;
-	protected String url;
-	protected HttpRequestBase request;
+	protected String url;//当前task需要爬取数据的请求的URL
+	protected HttpRequestBase request; //当前task需要爬取数据的请求
 	protected boolean proxyFlag;//是否通过代理下载
 	protected Proxy currentProxy;//当前线程使用的代理
 	protected static ZhiHuDao zhiHuDao;
-	protected static ZhiHuHttpClient zhiHuHttpClient = ZhiHuHttpClient.getInstance();
 	static {
 		zhiHuDao = newZhiHuDaoInstanceProxy();
 	}
@@ -62,10 +61,10 @@ public abstract class AbstractPageTask implements Runnable{
 						tempRequest.setConfig(HttpClientUtil.getRequestConfigBuilder().setProxy(proxy).build());
 					}
 					requestStartTime = System.currentTimeMillis();
-					page = zhiHuHttpClient.getWebPage(tempRequest);
+					page = CommonHttpClientUtils.getWebPage(tempRequest);
 				}else {
 					requestStartTime = System.currentTimeMillis();
-					page = zhiHuHttpClient.getWebPage(url);
+					page = CommonHttpClientUtils.getWebPage(url);
 				}
 			} else if(request != null){
 				if (proxyFlag){
@@ -75,10 +74,10 @@ public abstract class AbstractPageTask implements Runnable{
 						request.setConfig(HttpClientUtil.getRequestConfigBuilder().setProxy(proxy).build());
 					}
 					requestStartTime = System.currentTimeMillis();
-					page = zhiHuHttpClient.getWebPage(request);
+					page = CommonHttpClientUtils.getWebPage(request);
 				}else {
 					requestStartTime = System.currentTimeMillis();
-					page = zhiHuHttpClient.getWebPage(request);
+					page = CommonHttpClientUtils.getWebPage(request);
 				}
 			}
 			long requestEndTime = System.currentTimeMillis();
@@ -124,9 +123,7 @@ public abstract class AbstractPageTask implements Runnable{
                  */
                 currentProxy.setFailureTimes(currentProxy.getFailureTimes() + 1);
             }
-            if(!zhiHuHttpClient.getDetailListPageThreadPool().isShutdown()){
-				retry();
-			}
+            retry();
 		} finally {
 			if (request != null){
 				request.releaseConnection();

@@ -1,11 +1,10 @@
 package com.crawl.zhihu.parser;
 
-import java.util.Date;
 import java.util.List;
 
 import com.crawl.core.parser.UserAnswerPageParser;
 import com.crawl.core.util.Constants;
-import com.crawl.zhihu.ZhiHuHttpClient;
+import com.crawl.zhihu.ZhiHuUserHttpClient;
 import com.crawl.zhihu.entity.Answer;
 import com.crawl.zhihu.entity.Page;
 import com.google.common.collect.Lists;
@@ -25,7 +24,7 @@ public class ZhiHuUserAnswerListPageParser implements UserAnswerPageParser {
 
     public static ZhiHuUserAnswerListPageParser getInstance(){
         if (instance == null){
-            synchronized (ZhiHuHttpClient.class){
+            synchronized (ZhiHuUserHttpClient.class){
                 if (instance == null){
                     instance = new ZhiHuUserAnswerListPageParser();
                 }

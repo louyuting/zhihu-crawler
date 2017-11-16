@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.crawl.core.parser.UserListPageParser;
-import com.crawl.zhihu.ZhiHuHttpClient;
+import com.crawl.zhihu.ZhiHuUserHttpClient;
 import com.crawl.zhihu.entity.Page;
 import com.crawl.zhihu.entity.User;
 import com.jayway.jsonpath.DocumentContext;
@@ -19,7 +19,7 @@ public class ZhiHuUserListPageParser implements UserListPageParser {
     private static ZhiHuUserListPageParser instance;
     public static ZhiHuUserListPageParser getInstance(){
         if (instance == null){
-            synchronized (ZhiHuHttpClient.class){
+            synchronized (ZhiHuUserHttpClient.class){
                 if (instance == null){
                     instance = new ZhiHuUserListPageParser();
                 }

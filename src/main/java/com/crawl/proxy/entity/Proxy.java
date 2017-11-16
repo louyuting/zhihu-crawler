@@ -17,6 +17,7 @@ public class Proxy implements Delayed, Serializable{
     private int failureTimes;//请求失败次数
     private int successfulTimes;//请求成功次数
     private double successfulAverageTime;//成功请求平均耗时
+
     public Proxy(String ip, int port, long timeInterval) {
         this.ip = ip;
         this.port = port;

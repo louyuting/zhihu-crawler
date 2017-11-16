@@ -1,7 +1,5 @@
 package com.crawl.proxy;
 
-import static com.crawl.core.util.Constants.TIME_INTERVAL;
-
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -15,6 +13,8 @@ import com.crawl.proxy.site.ip181.Ip181ProxyListPageParser;
 import com.crawl.proxy.site.ip66.Ip66ProxyListPageParser;
 import com.crawl.proxy.site.mimiip.MimiipProxyListPageParser;
 import com.crawl.proxy.site.xicidaili.XicidailiProxyListPageParser;
+
+import static com.crawl.core.util.Constants.TIME_INTERVAL;
 
 /**
  * 代理池

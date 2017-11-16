@@ -12,7 +12,9 @@ import com.crawl.proxy.ProxyPool;
 import com.crawl.proxy.entity.Direct;
 import com.crawl.proxy.entity.Proxy;
 import com.crawl.proxy.site.ProxyListPageParserFactory;
-import com.crawl.zhihu.ZhiHuHttpClient;
+import com.crawl.zhihu.CommonHttpClientUtils;
+import com.crawl.zhihu.ZhiHuUserAnswerHttpClient;
+import com.crawl.zhihu.ZhiHuUserHttpClient;
 import com.crawl.zhihu.entity.Page;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpStatus;
@@ -26,7 +28,7 @@ import static com.crawl.proxy.ProxyPool.proxyQueue;
  * 若下载失败，通过代理去下载代理网页
  */
 public class ProxyPageTask implements Runnable{
-	private static Logger logger =  Constants.ZHIHU_LOGGER;
+	private static Logger logger =  Constants.PROXY_LOGGER;
 	protected String url;
 	private boolean proxyFlag;//是否通过代理下载
 	private Proxy currentProxy;//当前线程使用的代理
@@ -42,6 +44,16 @@ public class ProxyPageTask implements Runnable{
 	public void run(){
 		long requestStartTime = System.currentTimeMillis();
 		HttpGet tempRequest = null;
+		String charset = "UTF-8";
+		/**
+         * 66ip ： GB2312
+         * ip181： GB2312
+         * xicidaili：UTF-8
+         * mimiip ： UNT-8
+         */
+		if (url.contains("66ip") || url.contains("ip181")){
+		    charset = "GB2312";
+        }
 		try {
 			Page page = null;
 			if (proxyFlag){
@@ -51,9 +63,9 @@ public class ProxyPageTask implements Runnable{
 					HttpHost proxy = new HttpHost(currentProxy.getIp(), currentProxy.getPort());
 					tempRequest.setConfig(HttpClientUtil.getRequestConfigBuilder().setProxy(proxy).build());
 				}
-				page = proxyHttpClient.getWebPage(tempRequest);
+				page = CommonHttpClientUtils.getWebPage(tempRequest, charset);
 			}else {
-				page = proxyHttpClient.getWebPage(url);
+				page = CommonHttpClientUtils.getWebPage(url, charset);
 			}
 			page.setProxy(currentProxy);
 			int status = page.getStatusCode();
@@ -95,12 +107,14 @@ public class ProxyPageTask implements Runnable{
 		if (page.getHtml() == null || page.getHtml().equals("")){
 			return;
 		}
-
 		ProxyListPageParser parser = ProxyListPageParserFactory.
 				getProxyListPageParser(ProxyPool.proxyMap.get(url));
 		List<Proxy> proxyList = parser.parse(page.getHtml());
 		for(Proxy p : proxyList){
-			if(!ZhiHuHttpClient.getInstance().getDetailListPageThreadPool().isTerminated()){
+		    if (ZhiHuUserAnswerHttpClient.getInstance().getThreadPool() == null){
+                ZhiHuUserAnswerHttpClient.getInstance().initAnswerThreadPool();
+            }
+			if(!ZhiHuUserHttpClient.getInstance().getThreadPool().isTerminated()){
 				ProxyPool.lock.readLock().lock();
 				boolean containFlag = ProxyPool.proxySet.contains(p);
 				ProxyPool.lock.readLock().unlock();
@@ -108,7 +122,6 @@ public class ProxyPageTask implements Runnable{
 					ProxyPool.lock.writeLock().lock();
 					ProxyPool.proxySet.add(p);
 					ProxyPool.lock.writeLock().unlock();
-
 					proxyHttpClient.getProxyTestThreadExecutor().execute(new ProxyTestTask(p));
 				}
 			}

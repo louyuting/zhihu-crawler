@@ -8,27 +8,27 @@ import com.crawl.core.util.HttpClientUtil;
 import com.crawl.proxy.ProxyPool;
 import com.crawl.proxy.entity.Proxy;
 import com.crawl.proxy.util.ProxyUtil;
-import com.crawl.zhihu.ZhiHuHttpClient;
+import com.crawl.zhihu.ZhiHuUserHttpClient;
 
 /**
  * 代理序列化
  */
 public class ProxySerializeTask implements Runnable{
-    private static Logger logger = Constants.ZHIHU_LOGGER;
+    private static Logger logger = Constants.PROXY_LOGGER;
     @Override
     public void run() {
-        while (!ZhiHuHttpClient.isStop){
+        while (!ZhiHuUserHttpClient.isStop){
             try {
-                Thread.sleep(1000 * 60 * 1);
+                Thread.sleep(1000 * 60 * 60 * 1 );
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
             Proxy[] proxyArray = null;
             ProxyPool.lock.readLock().lock();
             try {
-                proxyArray = new Proxy[ProxyPool.proxySet.size()];
+                proxyArray = new Proxy[ProxyPool.proxyQueue.size()];
                 int i = 0;
-                for (Proxy p : ProxyPool.proxySet){
+                for (Proxy p : ProxyPool.proxyQueue){
                     if (!ProxyUtil.isDiscardProxy(p)){
                         proxyArray[i++] = p;
                     }
@@ -38,7 +38,7 @@ public class ProxySerializeTask implements Runnable{
             }
 
             HttpClientUtil.serializeObject(proxyArray, Config.proxyPath);
-            logger.info("成功序列化" + proxyArray.length + "个代理");
+            logger.info("成功序列化e" + proxyArray.length + "个代理");
         }
     }
 }
