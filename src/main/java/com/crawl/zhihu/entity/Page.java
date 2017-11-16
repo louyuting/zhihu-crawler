@@ -1,14 +1,12 @@
 package com.crawl.zhihu.entity;
 
 
-import com.crawl.proxy.entity.Proxy;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 
 public class Page {
     private String url;
     private int statusCode;//响应状态码
     private String html;//response content
-    private Proxy proxy;
 
     public String getUrl() {
         return url;
@@ -32,14 +30,6 @@ public class Page {
 
     public void setHtml(String html) {
         this.html = html;
-    }
-
-    public Proxy getProxy() {
-        return proxy;
-    }
-
-    public void setProxy(Proxy proxy) {
-        this.proxy = proxy;
     }
 
     @Override

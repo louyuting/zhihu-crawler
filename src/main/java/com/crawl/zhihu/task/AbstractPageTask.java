@@ -4,17 +4,11 @@ import java.io.IOException;
 import java.lang.reflect.InvocationHandler;
 
 import com.crawl.core.util.Constants;
-import com.crawl.core.util.HttpClientUtil;
 import com.crawl.core.util.SimpleInvocationHandler;
-import com.crawl.proxy.ProxyPool;
-import com.crawl.proxy.entity.Direct;
-import com.crawl.proxy.entity.Proxy;
-import com.crawl.proxy.util.ProxyUtil;
 import com.crawl.zhihu.CommonHttpClientUtils;
 import com.crawl.zhihu.dao.ZhiHuDao;
 import com.crawl.zhihu.dao.ZhiHuDaoMysqlImpl;
 import com.crawl.zhihu.entity.Page;
-import org.apache.http.HttpHost;
 import org.apache.http.HttpStatus;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpRequestBase;
@@ -24,14 +18,12 @@ import org.slf4j.Logger;
  * page task
  * 下载网页并解析，具体解析由子类实现
  * 若使用代理，从ProxyPool中取
- * @see ProxyPool
  */
 public abstract class AbstractPageTask implements Runnable{
 	private static Logger logger =  Constants.ZHIHU_LOGGER;
 	protected String url;//当前task需要爬取数据的请求的URL
 	protected HttpRequestBase request; //当前task需要爬取数据的请求
 	protected boolean proxyFlag;//是否通过代理下载
-	protected Proxy currentProxy;//当前线程使用的代理
 	protected static ZhiHuDao zhiHuDao;
 	static {
 		zhiHuDao = newZhiHuDaoInstanceProxy();
@@ -55,11 +47,6 @@ public abstract class AbstractPageTask implements Runnable{
 			if(url != null){
 				if (proxyFlag){
 					tempRequest = new HttpGet(url);
-					currentProxy = ProxyPool.proxyQueue.take();
-					if(!(currentProxy instanceof Direct)){
-						HttpHost proxy = new HttpHost(currentProxy.getIp(), currentProxy.getPort());
-						tempRequest.setConfig(HttpClientUtil.getRequestConfigBuilder().setProxy(proxy).build());
-					}
 					requestStartTime = System.currentTimeMillis();
 					page = CommonHttpClientUtils.getWebPage(tempRequest);
 				}else {
@@ -68,11 +55,6 @@ public abstract class AbstractPageTask implements Runnable{
 				}
 			} else if(request != null){
 				if (proxyFlag){
-					currentProxy = ProxyPool.proxyQueue.take();
-					if(!(currentProxy instanceof Direct)) {
-						HttpHost proxy = new HttpHost(currentProxy.getIp(), currentProxy.getPort());
-						request.setConfig(HttpClientUtil.getRequestConfigBuilder().setProxy(proxy).build());
-					}
 					requestStartTime = System.currentTimeMillis();
 					page = CommonHttpClientUtils.getWebPage(request);
 				}else {
@@ -81,25 +63,15 @@ public abstract class AbstractPageTask implements Runnable{
 				}
 			}
 			long requestEndTime = System.currentTimeMillis();
-			page.setProxy(currentProxy);
 			int status = page.getStatusCode();
-			String logStr = Thread.currentThread().getName() + " " + currentProxy +
+			String logStr = Thread.currentThread().getName() + " " +
 					"  executing request " + page.getUrl()  + " response statusCode:" + status +
 					"  request cost time:" + (requestEndTime - requestStartTime) + "ms";
 			if(status == HttpStatus.SC_OK){
 				if (page.getHtml().contains("zhihu") && !page.getHtml().contains("安全验证")){
 					logger.debug(logStr);
-					currentProxy.setSuccessfulTimes(currentProxy.getSuccessfulTimes() + 1);
-					currentProxy.setSuccessfulTotalTime(currentProxy.getSuccessfulTotalTime() + (requestEndTime - requestStartTime));
-					double aTime = (currentProxy.getSuccessfulTotalTime() + 0.0) / currentProxy.getSuccessfulTimes();
-					currentProxy.setSuccessfulAverageTime(aTime);
-					currentProxy.setLastSuccessfulTime(System.currentTimeMillis());
 					handle(page);
 				}else {
-					/**
-					 * 代理异常，没有正确返回目标url
-					 */
-					logger.warn("proxy exception:" + currentProxy.toString());
 				}
 			}
 			/**
@@ -117,12 +89,6 @@ public abstract class AbstractPageTask implements Runnable{
 		} catch (InterruptedException e) {
 			logger.error("InterruptedException", e);
 		} catch (IOException e) {
-            if(currentProxy != null){
-                /**
-                 * 该代理可用，将该代理继续添加到proxyQueue
-                 */
-                currentProxy.setFailureTimes(currentProxy.getFailureTimes() + 1);
-            }
             retry();
 		} finally {
 			if (request != null){
@@ -130,10 +96,6 @@ public abstract class AbstractPageTask implements Runnable{
 			}
 			if (tempRequest != null){
 				tempRequest.releaseConnection();
-			}
-			if (currentProxy != null && !ProxyUtil.isDiscardProxy(currentProxy)){
-				currentProxy.setTimeInterval(Constants.TIME_INTERVAL);
-				ProxyPool.proxyQueue.add(currentProxy);
 			}
 		}
 	}
@@ -149,12 +111,6 @@ public abstract class AbstractPageTask implements Runnable{
 	 */
 	abstract void handle(Page page);
 
-	private String getProxyStr(Proxy proxy){
-		if (proxy == null){
-			return "";
-		}
-		return proxy.getIp() + ":" + proxy.getPort();
-	}
 	/**
 	 * 代理DAO类，统计方法执行时间
 	 * @return

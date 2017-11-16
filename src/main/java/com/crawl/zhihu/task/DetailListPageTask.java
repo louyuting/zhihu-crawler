@@ -78,7 +78,6 @@ public class DetailListPageTask extends AbstractPageTask {
         // check 爬虫爬取到的是关注的人用户信息的接口
         if(!page.getHtml().startsWith("{\"paging\"")){
             //代理异常，未能正确返回目标请求数据，丢弃
-            currentProxy = null;
             return;
         }
         //获取当前用户关注的人的列表
@@ -103,8 +102,7 @@ public class DetailListPageTask extends AbstractPageTask {
                         zhiHuUserHttpClient.getThreadPool().execute(new DetailListPageTask(request, true));
                     }
                 }
-            }
-            else if(!Config.dbEnable || zhiHuUserHttpClient.getThreadPool().getActiveCount() == 1){
+            } else if(!Config.dbEnable || zhiHuUserHttpClient.getThreadPool().getActiveCount() == 1){
                 parseUserCount.incrementAndGet();
                 for (int j = 0; j < u.getFollowees() / 20; j++){
                     String nextUrl = String.format(USER_FOLLOWEES_URL, u.getUserToken(), j * 20);

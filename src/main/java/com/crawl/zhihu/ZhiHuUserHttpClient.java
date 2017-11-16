@@ -11,7 +11,6 @@ import com.crawl.core.util.Config;
 import com.crawl.core.util.Constants;
 import com.crawl.core.util.SimpleThreadPoolExecutor;
 import com.crawl.core.util.ThreadPoolMonitor;
-import com.crawl.proxy.ProxyHttpClient;
 import com.crawl.zhihu.task.DetailListPageTask;
 import org.apache.http.client.methods.HttpGet;
 import org.slf4j.Logger;
@@ -92,8 +91,7 @@ public class ZhiHuUserHttpClient extends AbstractHttpClient{
          * 下载网页数
          */
         long downloadPageCount = detailListPageThreadPool.getTaskCount();
-        if (downloadPageCount >= Config.downloadUserPageCount &&
-                !detailListPageThreadPool.isShutdown()) {
+        if (downloadPageCount >= Config.downloadUserPageCount && !detailListPageThreadPool.isShutdown()) {
             isStop = true;
             ThreadPoolMonitor.setIsStopMonitor(true);
             detailListPageThreadPool.shutdown();
@@ -104,10 +102,6 @@ public class ZhiHuUserHttpClient extends AbstractHttpClient{
             for(Connection cn : map.values()){
                 closeConnection(cn);
             }
-            //关闭代理检测线程池
-            ProxyHttpClient.getInstance().getProxyTestThreadExecutor().shutdownNow();
-            //关闭代理下载页线程池
-            ProxyHttpClient.getInstance().getProxyDownloadThreadExecutor().shutdownNow();
         }
         double costTime = (System.currentTimeMillis() - startTime) / 1000.0;//单位s
         sudu_logger.debug("抓取速率：" + parseUserCount.get() / costTime + "个/s");
