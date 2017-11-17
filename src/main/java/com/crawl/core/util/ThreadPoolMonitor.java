@@ -25,8 +25,7 @@ public class ThreadPoolMonitor implements Runnable{
 
     public void run(){
         while(!isStopMonitor){
-            logger.info(threadPoolName +
-                    String.format("[monitor] [%d/%d] Active: %d, Completed: %d, queueSize: %d, TotalTask: %d, isShutdown: %s, isTerminated: %s",
+            logger.info(threadPoolName + String.format("[monitor] [%d/%d] Active: %d, Completed: %d, queueSize: %d, TotalTask: %d, isShutdown: %s, isTerminated: %s",
                             this.executor.getPoolSize(),     // 获取当前线程池中线程数量
                             this.executor.getCorePoolSize(), // 获取线程池中线程核心数量
                             this.executor.getActiveCount(),  // 获取线程池中正在运行的线程数量
@@ -36,7 +35,7 @@ public class ThreadPoolMonitor implements Runnable{
                             this.executor.isShutdown(),            // 线程池是否已经不再接受任务
                             this.executor.isTerminated()));        // 线程池是否已经终止
             try {
-                Thread.sleep(1000);
+                Thread.sleep(2000);
             } catch (InterruptedException e) {
                 e.printStackTrace();
                 logger.error("InterruptedException",e);
@@ -46,9 +45,5 @@ public class ThreadPoolMonitor implements Runnable{
 
     public static void setIsStopMonitor(boolean isStopMonitor) {
         ThreadPoolMonitor.isStopMonitor = isStopMonitor;
-    }
-
-    public static boolean isIsStopMonitor() {
-        return isStopMonitor;
     }
 }

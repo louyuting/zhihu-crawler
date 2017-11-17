@@ -39,7 +39,9 @@ public class Config {
      * 爬虫入口, 用户获取认证信息
      */
     public static String  startURL;
-
+    /**
+     * 默认的 user_token
+     */
     public static String startUserToken;
     /**
      * 下载用户信息网页数

@@ -4,7 +4,7 @@
 
     <groupId>com.crawl</groupId>
     <artifactId>zhihu-crawler</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.0.SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>zhihu-crawler</name>
@@ -44,6 +44,12 @@
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
             <version>3.6</version>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/commons-collections/commons-collections -->
+        <dependency>
+            <groupId>commons-collections</groupId>
+            <artifactId>commons-collections</artifactId>
+            <version>3.2.2</version>
         </dependency>
 
         <!--log4j-->
@@ -114,7 +120,7 @@
     <build>
         <resources>
             <resource>
-                <directory>src/main/resource</directory>
+                <directory>src/main/resources</directory>
                 <includes>
                     <include>**/*.properties</include>
                     <include>**/*.xml</include>

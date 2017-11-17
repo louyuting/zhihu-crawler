@@ -25,12 +25,11 @@ public abstract class AbstractPageTask implements Runnable{
 	protected HttpRequestBase request; //当前task需要爬取数据的请求
 	protected boolean proxyFlag;//是否通过代理下载
 	protected static ZhiHuDao zhiHuDao;
+
 	static {
 		zhiHuDao = newZhiHuDaoInstanceProxy();
 	}
-	public AbstractPageTask(){
 
-	}
 	public AbstractPageTask(String url, boolean proxyFlag){
 		this.url = url;
 		this.proxyFlag = proxyFlag;
@@ -45,50 +44,42 @@ public abstract class AbstractPageTask implements Runnable{
 		try {
 			Page page = null;
 			if(url != null){
+			    requestStartTime = System.currentTimeMillis();
 				if (proxyFlag){
 					tempRequest = new HttpGet(url);
-					requestStartTime = System.currentTimeMillis();
 					page = CommonHttpClientUtils.getWebPage(tempRequest);
 				}else {
-					requestStartTime = System.currentTimeMillis();
 					page = CommonHttpClientUtils.getWebPage(url);
 				}
 			} else if(request != null){
+			    requestStartTime = System.currentTimeMillis();
 				if (proxyFlag){
-					requestStartTime = System.currentTimeMillis();
 					page = CommonHttpClientUtils.getWebPage(request);
 				}else {
-					requestStartTime = System.currentTimeMillis();
 					page = CommonHttpClientUtils.getWebPage(request);
 				}
 			}
 			long requestEndTime = System.currentTimeMillis();
 			int status = page.getStatusCode();
-			String logStr = Thread.currentThread().getName() + " " +
-					"  executing request " + page.getUrl()  + " response statusCode:" + status +
-					"  request cost time:" + (requestEndTime - requestStartTime) + "ms";
+			String logStr = Thread.currentThread().getName() + "-" + " response statusCode:" + status +
+					" executing request：" + page.getUrl()  + " request cost time:" + (requestEndTime - requestStartTime) + "ms";
 			if(status == HttpStatus.SC_OK){
 				if (page.getHtml().contains("zhihu") && !page.getHtml().contains("安全验证")){
 					logger.debug(logStr);
 					handle(page);
 				}else {
+				    logger.debug("request error, info={}", logStr);
 				}
-			}
-			/**
-			 * 401--不能通过验证
-			 */
-			else if(status == 404 || status == 401 ||
+			} else if(status == 404 || status == 401 ||
 					status == 410){
-				logger.warn(logStr);
-			}
-			else {
-				logger.error(logStr);
-				Thread.sleep(100);
+			    /* 401--不能通过验证*/
+				logger.warn("oauth error, info={}", logStr);
+			} else {
+				logger.error("request error, status={}, info={}", status, logStr);
 				retry();
 			}
-		} catch (InterruptedException e) {
-			logger.error("InterruptedException", e);
 		} catch (IOException e) {
+		    logger.error("IOException", e);
             retry();
 		} finally {
 			if (request != null){

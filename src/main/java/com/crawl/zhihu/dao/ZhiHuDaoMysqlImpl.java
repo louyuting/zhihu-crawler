@@ -1,6 +1,5 @@
 package com.crawl.zhihu.dao;
 
-import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -84,9 +83,8 @@ public class ZhiHuDaoMysqlImpl implements ZhiHuDao {
             rs.close();
             st.close();
             cn.close();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
+        } catch (Exception e) {
+            Constants.MONITOR_LOGGER.error("initDB error! exception type is {}", e.getClass().getName());
             e.printStackTrace();
         }
     }
@@ -208,6 +206,9 @@ public class ZhiHuDaoMysqlImpl implements ZhiHuDao {
                 e.printStackTrace();
                 logger.error("com.crawl.zhihu.dao.ZhiHuDaoMysqlImpl.listUserTokenLimitNumOrderById error! offset={}, limit={}", offset, limit);
                 offset ++;
+                if((e instanceof SQLException) &&  e.toString().contains("Too many connections")){
+                    offset--;
+                }
             }
             // 当超过自旋次数就直接返回一个空的list
             if(currentCount.get() >= spinMax){
@@ -280,6 +281,7 @@ public class ZhiHuDaoMysqlImpl implements ZhiHuDao {
     public boolean insertAnswer(Connection cn, Answer answer) {
         try {
             if (isExistAnswer(cn, answer.getAnswerId())){
+                logger.info("current answerIs is existed, answerId={}", answer.getAnswerId());
                 return false;
             }
             String column = "comment_count,voteup_count,content,excerpt,created_time,updated_time,answer_id,question_id,question_title," +
@@ -307,7 +309,7 @@ public class ZhiHuDaoMysqlImpl implements ZhiHuDao {
             pstmt.setString(11,answer.getUserToken());
             pstmt.executeUpdate();
             pstmt.close();
-            logger.info("插入数据库成功---" + answer.getQuestionTitle() + "----" +answer.getQuestionId() + "----" +answer.getAnswerId());
+            logger.info("插入数据库成功---"+ answer.getUserToken()  + "----" +answer.getQuestionId() + "----" +answer.getAnswerId() + "----" + answer.getQuestionTitle());
         } catch (SQLException e) {
             e.printStackTrace();
             logger.error("insert answer error, answer={}", answer);

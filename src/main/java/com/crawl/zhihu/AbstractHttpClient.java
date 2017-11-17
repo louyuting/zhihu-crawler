@@ -45,9 +45,12 @@ abstract public class AbstractHttpClient implements IHttpClient{
         startCrawl(Config.startUserToken);
     }
 
+    /**
+     * 子类实现
+     * @param userToken
+     */
     @Override
     abstract public void startCrawl(String userToken);
-
 
     /**
      * 初始化authorization
@@ -79,7 +82,7 @@ abstract public class AbstractHttpClient implements IHttpClient{
         matcher = pattern.matcher(jsContent);
         if (matcher.find()){
             String authorization = matcher.group(1);
-            logger.info("初始化authoriztion完成");
+            logger.info("初始化authoriztion完成, authorization={}", authorization);
             return authorization;
         }
         throw new RuntimeException("not get authorization");
@@ -93,12 +96,18 @@ abstract public class AbstractHttpClient implements IHttpClient{
     @Override
     abstract public ThreadPoolExecutor getThreadPool();
 
+    /**
+     * 关闭指定的连接对象
+     *
+     * @param cn
+     */
     protected void closeConnection(Connection cn){
         try {
             if (cn != null && !cn.isClosed()){
                 cn.close();
             }
         } catch (SQLException e) {
+            Constants.MONITOR_LOGGER.info("close connection fail! current Thread is {}", Thread.currentThread().getName());
             e.printStackTrace();
         }
     }

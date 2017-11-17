@@ -28,7 +28,6 @@
         </encoder>
     </appender>
 
-
     <appender name="monitor_logger" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${log.path}/monitor.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
@@ -62,9 +61,21 @@
         </encoder>
     </appender>
 
+    <appender name="dao_logger" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${log.path}/dao.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${log.path}/dao.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>${log.maxHistory}</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${log.pattern}</pattern>
+        </encoder>
+    </appender>
+
+
     <root level="${log.rootLevel}">
         <appender-ref ref="zhihu_logger"/>
-        <appender-ref ref="console_logger"/>
+        <!--<appender-ref ref="console_logger"/>-->
     </root>
 
     <logger name="console" level="DEBUG" additivity="false">
@@ -86,6 +97,10 @@
         <appender-ref ref="console_logger"/>
     </logger>
 
+    <logger name="dao" level="DEBUG" additivity="false">
+        <appender-ref ref="dao_logger"/>
+    </logger>
+
     <logger name="proxy" level="DEBUG" additivity="false">
         <appender-ref ref="proxy_logger"/>
         <appender-ref ref="console_logger"/>
@@ -94,6 +109,7 @@
     <!-- 配置这个路径下访问的类的logger name-->
     <Logger name="com.crawl" level="debug" additivity="false">
         <appender-ref ref="monitor_logger"/>
+        <appender-ref ref="console_logger"/>
     </Logger>
 
 </configuration>

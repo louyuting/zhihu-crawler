@@ -43,11 +43,11 @@ public class ZhihuDAOTest {
         Assert.assertTrue(flag);
     }
 
-    @Test
+    /*@Test
     public void isExistAnswer_test_normal_01(){
         ZhiHuDaoMysqlImpl.DBTablesInit();
         ZhiHuDao zhiHuDao = new ZhiHuDaoMysqlImpl();
         boolean flag = zhiHuDao.isExistAnswer(ConnectionManager.getConnection(), answerId);
         Assert.assertTrue(flag);
-    }
+    }*/
 }

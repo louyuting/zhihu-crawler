@@ -9,7 +9,7 @@ import org.slf4j.Logger;
  * 动态代理
  */
 public class SimpleInvocationHandler implements InvocationHandler{
-    private static Logger logger = Constants.ZHIHU_LOGGER;
+    private static Logger logger = Constants.DAO_LOGGER;
 
     private Object target;
 

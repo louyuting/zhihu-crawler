@@ -6,13 +6,13 @@ import java.sql.Connection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 
 import com.crawl.core.db.ConnectionManager;
 import com.crawl.core.parser.UserAnswerPageParser;
 import com.crawl.core.util.Config;
 import com.crawl.core.util.Constants;
 import com.crawl.core.util.SimpleInvocationHandler;
+import com.crawl.core.util.TimeDelayUtil;
 import com.crawl.zhihu.ZhiHuUserAnswerHttpClient;
 import com.crawl.zhihu.entity.Answer;
 import com.crawl.zhihu.entity.Page;
@@ -49,10 +49,6 @@ public class UserAnswerTask extends AbstractPageTask{
         proxyUserAnswerPageParser = getProxyUserAnswerPageParser();
     }
 
-    public UserAnswerTask(){
-
-    }
-
     public UserAnswerTask(HttpRequestBase request, boolean proxyFlag, String userToken){
         super(request, proxyFlag);
         this.userToken = userToken;
@@ -65,29 +61,26 @@ public class UserAnswerTask extends AbstractPageTask{
     private static UserAnswerPageParser getProxyUserAnswerPageParser(){
         UserAnswerPageParser userAnswerPageParser = ZhiHuUserAnswerListPageParser.getInstance();
         InvocationHandler invocationHandler = new SimpleInvocationHandler(userAnswerPageParser);
-        UserAnswerPageParser proxyUserAnswerPageParser = (UserAnswerPageParser) Proxy.newProxyInstance(
-            userAnswerPageParser.getClass().getClassLoader(),
-                userAnswerPageParser.getClass().getInterfaces(), invocationHandler);
-        return proxyUserAnswerPageParser;
+        return (UserAnswerPageParser) Proxy.newProxyInstance(
+            userAnswerPageParser.getClass().getClassLoader(), userAnswerPageParser.getClass().getInterfaces(), invocationHandler);
     }
-
-
 
     @Override
     void retry() {
-        zhiHuUserAnswerHttpClient.getThreadPool().execute(new UserAnswerTask(request, true, this.userToken));
+        zhiHuUserAnswerHttpClient.getThreadPool().execute(new UserAnswerTask(request, false, this.userToken));
     }
 
     @Override
     void handle(Page page) {
         List<Answer> answerList = proxyUserAnswerPageParser.parseAnswerListPage(page);
         for(Answer answer : answerList){
-            logger.info("解析answer成功: "+ answer.toString());
+            logger.info("answer解析成功---userToken={"+ this.userToken  + "}, questionId={" +answer.getQuestionId() + "}, answerId={" +
+                answer.getAnswerId() + "}, questionTitle={" + answer.getQuestionTitle()+"}");
             if(Config.dbEnable){
                 Connection cn = getConnection();
                 // 判断当前用户的当前答案是否已经解析过了
                 if(zhiHuDao.isExistUserAnswer(cn, this.userToken, answer.getAnswerId())){
-                    logger.info("current answer has parsed, answer={}", answer);
+                    logger.info(this.userToken + " current answer has parsed, answer={}", answer);
                     continue;
                 }
                 if (zhiHuDao.insertAnswer(cn, answer)){
@@ -97,12 +90,12 @@ public class UserAnswerTask extends AbstractPageTask{
                 }
             }
         }
-
         DocumentContext dc = JsonPath.parse(page.getHtml());
         boolean isStart = dc.read("$.paging.is_start");
         if (isStart){
             Integer totals = dc.read("$.paging.totals");
-            for (int j = 1; j < totals; j++) {
+            int pageNum = (totals%20==0)? totals/20 : ((totals/20)+1);
+            for (int j = 1; j <= pageNum; j++) {
                 String nextUrl = String.format(Constants.USER_ANSWER_URL, userToken, j * 20);
                 HttpRequestBase request = new HttpGet(nextUrl);
                 request.setHeader("authorization", "oauth " + zhiHuUserAnswerHttpClient.getAuthorization());
@@ -110,8 +103,8 @@ public class UserAnswerTask extends AbstractPageTask{
             }
         }
         try {
-            TimeUnit.MILLISECONDS.sleep(10);
-        } catch (InterruptedException e) {
+            TimeDelayUtil.delayMilli(666);
+        } catch (Throwable e) {
             e.printStackTrace();
         }
     }
@@ -120,7 +113,7 @@ public class UserAnswerTask extends AbstractPageTask{
      * 每个thread维护一个Connection
      * @return
      */
-    private Connection getConnection(){
+    public static Connection getConnection(){
         Thread currentThread = Thread.currentThread();
         Connection cn = null;
         if (!connectionMap.containsKey(currentThread)){
