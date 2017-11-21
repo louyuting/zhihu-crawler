@@ -15,9 +15,12 @@ import com.crawl.core.util.SimpleThreadFactory;
 import com.crawl.core.util.SimpleThreadPoolExecutor;
 import com.crawl.core.util.ThreadPoolMonitor;
 import com.crawl.core.util.TimeDelayUtil;
-import com.crawl.zhihu.task.AbstractPageTask;
+import com.crawl.zhihu.container.ContainerPool;
+import com.crawl.zhihu.dao.UserAnswerDao;
+import com.crawl.zhihu.dao.UserDao;
 import com.crawl.zhihu.task.UserAnswerTask;
 import com.google.common.collect.Lists;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpRequestBase;
 import org.slf4j.Logger;
@@ -29,7 +32,6 @@ public class ZhiHuUserAnswerHttpClient extends AbstractHttpClient {
     private static Logger logger =  Constants.ZHIHU_LOGGER;
     private static Logger sudu_logger =  Constants.SUDU_LOGGER;
     private volatile static ZhiHuUserAnswerHttpClient instance;
-    private static AtomicInteger stopCount = new AtomicInteger(0);
     /**
      * 统计用户answer数量
      */
@@ -42,8 +44,11 @@ public class ZhiHuUserAnswerHttpClient extends AbstractHttpClient {
      * 答案页下载线程池
      */
     private static ThreadPoolExecutor answerPageThreadPool;
-
+    /** 线程池名称 */
     private static final String THREAD_POOL_NAME = "answerPageThreadPool";
+
+    private static UserDao userDao = ContainerPool.getUserDao();
+    private static UserAnswerDao userAnswerDao = ContainerPool.getUserAnswerDao();
 
 
     public static ZhiHuUserAnswerHttpClient getInstance(){
@@ -58,8 +63,28 @@ public class ZhiHuUserAnswerHttpClient extends AbstractHttpClient {
     }
 
     private ZhiHuUserAnswerHttpClient() {
-        super();
+        super();//init: DB、authorization
+        initCurrentOffset();
         initAnswerThreadPool();
+    }
+
+    private static void initCurrentOffset(){
+        //根据数据库实际情况初始化 currentOffset
+        boolean lastestOffset = true;
+        logger.info("开始校正user表，获取user_token没被爬取答案，且其id最小。");
+        while (lastestOffset){
+            String userTokenTemp = userDao.getUserTokenById(UserAnswerTask.getConnection(), currentOffset);
+            if (StringUtils.isBlank(userTokenTemp)){
+                continue;
+            }
+            //todo 这里存在多台服务器，刚好同时竞争情况，考虑分布式锁
+            lastestOffset = userAnswerDao.isExistUserInAnswer(UserAnswerTask.getConnection(), userTokenTemp);
+            if(!lastestOffset){
+                break;
+            }
+            currentOffset++;
+        }
+        logger.info("user表校正成功，currentOffset={}", currentOffset);
     }
 
     private static void initAnswerThreadPool(){
@@ -138,7 +163,7 @@ public class ZhiHuUserAnswerHttpClient extends AbstractHttpClient {
         List<String> res = Lists.newArrayList();
         for (;;){
             count++;
-            List<String> userTokenList = AbstractPageTask.getZhiHuDao().listUserTokenLimitNumOrderById(UserAnswerTask.getConnection(), currentOffset, LIMIT);
+            List<String> userTokenList = userDao.listUserTokenLimitNumOrderById(UserAnswerTask.getConnection(), currentOffset, LIMIT);
             if(userTokenList.size() == 0){
                 currentOffset += LIMIT;
                 continue;

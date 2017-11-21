@@ -9,7 +9,7 @@ import java.util.regex.Pattern;
 import com.crawl.core.httpclient.IHttpClient;
 import com.crawl.core.util.Config;
 import com.crawl.core.util.Constants;
-import com.crawl.zhihu.dao.ZhiHuDaoMysqlImpl;
+import com.crawl.zhihu.dao.impl.CommonDaoImpl;
 import com.crawl.zhihu.task.GeneralPageTask;
 import org.slf4j.Logger;
 
@@ -36,7 +36,7 @@ abstract public class AbstractHttpClient implements IHttpClient{
     @Override
     public void initDB() {
         if(Config.dbEnable){
-            ZhiHuDaoMysqlImpl.DBTablesInit();
+            CommonDaoImpl.DBTablesInit();
         }
     }
 
@@ -47,10 +47,21 @@ abstract public class AbstractHttpClient implements IHttpClient{
 
     /**
      * 子类实现
+     *
      * @param userToken
      */
     @Override
     abstract public void startCrawl(String userToken);
+
+    /**
+     * 子类实现
+     *
+     * @param userTokenList
+     */
+    @Override
+    public void startCrawl(String[] userTokenList) {
+
+    }
 
     /**
      * 初始化authorization

@@ -1,13 +1,13 @@
 package com.crawl.zhihu.task;
 
 import java.io.IOException;
-import java.lang.reflect.InvocationHandler;
 
 import com.crawl.core.util.Constants;
-import com.crawl.core.util.SimpleInvocationHandler;
 import com.crawl.zhihu.CommonHttpClientUtils;
-import com.crawl.zhihu.dao.ZhiHuDao;
-import com.crawl.zhihu.dao.ZhiHuDaoMysqlImpl;
+import com.crawl.zhihu.container.ContainerPool;
+import com.crawl.zhihu.dao.UrlDao;
+import com.crawl.zhihu.dao.UserAnswerDao;
+import com.crawl.zhihu.dao.UserDao;
 import com.crawl.zhihu.entity.Page;
 import org.apache.http.HttpStatus;
 import org.apache.http.client.methods.HttpGet;
@@ -23,12 +23,10 @@ public abstract class AbstractPageTask implements Runnable{
 	private static Logger logger =  Constants.ZHIHU_LOGGER;
 	protected String url;//当前task需要爬取数据的请求的URL
 	protected HttpRequestBase request; //当前task需要爬取数据的请求
-	protected boolean proxyFlag;//是否通过代理下载
-	protected static ZhiHuDao zhiHuDao;
-
-	static {
-		zhiHuDao = newZhiHuDaoInstanceProxy();
-	}
+	private boolean proxyFlag;//是否通过代理下载
+    protected static UserAnswerDao userAnswerDao = ContainerPool.getUserAnswerDao();
+    protected static UserDao userDao = ContainerPool.getUserDao();
+    protected static UrlDao urlDao = ContainerPool.getUrlDao();
 
 	public AbstractPageTask(String url, boolean proxyFlag){
 		this.url = url;
@@ -101,20 +99,4 @@ public abstract class AbstractPageTask implements Runnable{
 	 * @param page
 	 */
 	abstract void handle(Page page);
-
-	/**
-	 * 代理DAO类，统计方法执行时间
-	 * @return
-	 */
-	private static ZhiHuDao newZhiHuDaoInstanceProxy(){
-		ZhiHuDao zhiHuDao = new ZhiHuDaoMysqlImpl();
-		InvocationHandler invocationHandler = new SimpleInvocationHandler(zhiHuDao);
-		ZhiHuDao proxyZhiHuDao = (ZhiHuDao) java.lang.reflect.Proxy.newProxyInstance(zhiHuDao.getClass().getClassLoader(),
-				zhiHuDao.getClass().getInterfaces(), invocationHandler);
-		return proxyZhiHuDao;
-	}
-
-    public static ZhiHuDao getZhiHuDao() {
-        return zhiHuDao;
-    }
 }

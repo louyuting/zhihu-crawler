@@ -79,11 +79,11 @@ public class UserAnswerTask extends AbstractPageTask{
             if(Config.dbEnable){
                 Connection cn = getConnection();
                 // 判断当前用户的当前答案是否已经解析过了
-                if(zhiHuDao.isExistUserAnswer(cn, this.userToken, answer.getAnswerId())){
+                if(userAnswerDao.isExistUserAnswer(cn, this.userToken, answer.getAnswerId())){
                     logger.info(this.userToken + " current answer has parsed, answer={}", answer);
                     continue;
                 }
-                if (zhiHuDao.insertAnswer(cn, answer)){
+                if (userAnswerDao.insertAnswer(cn, answer)){
                     zhiHuUserAnswerHttpClient.getParseUserAnswerCount().incrementAndGet();
                 } else {
                     logger.error("insert answer fail!, answer={}", answer);

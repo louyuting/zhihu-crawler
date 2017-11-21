@@ -4,6 +4,9 @@ import java.sql.SQLException;
 import java.util.List;
 
 import com.crawl.core.db.ConnectionManager;
+import com.crawl.zhihu.dao.impl.CommonDaoImpl;
+import com.crawl.zhihu.dao.impl.UserAnswerDaoImpl;
+import com.crawl.zhihu.dao.impl.UserDaoImpl;
 import com.crawl.zhihu.entity.Answer;
 import org.junit.Assert;
 import org.junit.Test;
@@ -14,17 +17,17 @@ public class ZhihuDAOTest {
 
     @Test
     public void testDBTablesInit(){
-        ZhiHuDaoMysqlImpl.DBTablesInit();
-        ZhiHuDao zhiHuDao = new ZhiHuDaoMysqlImpl();
-        List<String> res = zhiHuDao.listUserTokenLimitNumOrderById(1, 5);
+        CommonDaoImpl.DBTablesInit();
+        UserDao userDao = new UserDaoImpl();
+        List<String> res = userDao.listUserTokenLimitNumOrderById(1, 5);
         Assert.assertTrue(res.size() == 5);
         System.out.println(res);
     }
 
     @Test
     public void insertAnswer_test_normal_01() throws SQLException {
-        ZhiHuDaoMysqlImpl.DBTablesInit();
-        ZhiHuDao zhiHuDao = new ZhiHuDaoMysqlImpl();
+        CommonDaoImpl.DBTablesInit();
+        UserAnswerDao userAnswerDao = new UserAnswerDaoImpl();
         Answer answer = new Answer();
         answer.setCommentCount(20);
         answer.setVoteupCount(20);
@@ -38,16 +41,9 @@ public class ZhihuDAOTest {
         answer.setQuestionTitle("title");
         answer.setUserToken("louyuting");
         ConnectionManager.getConnection().setAutoCommit(false);
-        boolean flag = zhiHuDao.insertAnswer(ConnectionManager.getConnection(), answer);
+        boolean flag = userAnswerDao.insertAnswer(ConnectionManager.getConnection(), answer);
         ConnectionManager.getConnection().rollback();
         Assert.assertTrue(flag);
     }
 
-    /*@Test
-    public void isExistAnswer_test_normal_01(){
-        ZhiHuDaoMysqlImpl.DBTablesInit();
-        ZhiHuDao zhiHuDao = new ZhiHuDaoMysqlImpl();
-        boolean flag = zhiHuDao.isExistAnswer(ConnectionManager.getConnection(), answerId);
-        Assert.assertTrue(flag);
-    }*/
 }

@@ -2,6 +2,7 @@ package com.crawl;
 
 import com.crawl.core.util.Constants;
 import com.crawl.zhihu.ZhiHuUserAnswerHttpClient;
+import com.crawl.zhihu.container.ContainerPool;
 import org.slf4j.Logger;
 
 /**
@@ -16,6 +17,7 @@ public class Main {
         for (String arg : args){
             logger.info(arg);
         }
+        ContainerPool.initContainer();
         if(args.length > 0){
             String startToken = String.valueOf(args[0]);
             ZhiHuUserAnswerHttpClient.getInstance().startCrawl(startToken);

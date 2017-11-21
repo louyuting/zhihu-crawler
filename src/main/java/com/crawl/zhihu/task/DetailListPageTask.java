@@ -86,7 +86,7 @@ public class DetailListPageTask extends AbstractPageTask {
             logger.info("解析用户成功:" + u.toString());
             if(Config.dbEnable){
                 Connection cn = getConnection();
-                if (zhiHuDao.insertUser(cn, u)){
+                if (userDao.insertUser(cn, u)){
                     parseUserCount.incrementAndGet();
                 }
                 for (int j = 0; j < u.getFollowees() / 20; j++){
@@ -94,7 +94,7 @@ public class DetailListPageTask extends AbstractPageTask {
                         continue;
                     }
                     String nextUrl = String.format(USER_FOLLOWEES_URL, u.getUserToken(), j * 20);
-                    if (zhiHuDao.insertUrl(cn, Md5Util.Convert2Md5(nextUrl)) ||
+                    if (urlDao.insertUrl(cn, Md5Util.Convert2Md5(nextUrl)) ||
                             zhiHuUserHttpClient.getThreadPool().getActiveCount() == 1){
                         //防止死锁
                         HttpGet request = new HttpGet(nextUrl);
